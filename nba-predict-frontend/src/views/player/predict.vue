@@ -13,13 +13,13 @@
           <el-form :model="form" label-width="90px" :rules="rules" ref="formRef">
             <el-form-item label="选择球员" prop="playerId" required>
               <el-select v-model="form.playerId" filterable remote placeholder="搜索球员姓名" :remote-method="searchPlayerDebounced" :loading="playerLoading" style="width:100%">
-                <el-option v-for="item in playerOptions" :key="item.id" :label="item.name" :value="item.id" />
+                <el-option v-for="item in playerOptions" :key="item.playerId" :label="item.playerName" :value="item.playerId" />
               </el-select>
             </el-form-item>
 
             <el-form-item label="对位球员">
               <el-select v-model="form.opponentPlayerId" filterable remote placeholder="搜索对位球员(可选)" :remote-method="searchOpponent" clearable style="width:100%">
-                <el-option v-for="item in opponentOptions" :key="item.id" :label="item.name" :value="item.id" />
+                <el-option v-for="item in opponentOptions" :key="item.playerId" :label="item.playerName" :value="item.playerId" />
               </el-select>
             </el-form-item>
 

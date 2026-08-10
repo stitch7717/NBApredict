@@ -69,6 +69,12 @@ async def get_team_injury_impact(team_id: int):
     }
 
 
+@router.get("/rating/{team_id}", summary="球队实力评分")
+async def get_team_rating(team_id: int):
+    """获取球队实力评分（净效率、攻防效率、节奏）"""
+    return team_service.get_team_rating(team_id)
+
+
 @router.post("/impact/refresh", summary="刷新球员影响力数据")
 async def refresh_player_impact(season: str = "2025-26"):
     """

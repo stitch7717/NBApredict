@@ -10,7 +10,7 @@ class PlayerPredictRequest(BaseModel):
     """球员预测请求"""
     player_id: int = Field(..., gt=0, description="球员ID")
     opponent_player_id: Optional[int] = Field(None, gt=0, description="对位球员ID")
-    scene: str = Field(default="常规赛", pattern="^(常规赛|季后赛|关键战)$", description="比赛场景")
+    scene: str = Field(default="常规赛", pattern="^(常规赛|季后赛)$", description="比赛场景")
     home_away: str = Field(default="home", pattern="^(home|away)$", description="主客场")
 
 
@@ -18,7 +18,7 @@ class TeamPredictRequest(BaseModel):
     """球队预测请求"""
     home_team_id: int = Field(..., gt=0, description="主队ID")
     away_team_id: int = Field(..., gt=0, description="客队ID")
-    scene: str = Field(default="常规赛", pattern="^(常规赛|季后赛|关键战)$", description="比赛场景")
+    scene: str = Field(default="常规赛", pattern="^(常规赛|季后赛)$", description="比赛场景")
     use_odds: bool = Field(default=False, description="是否使用赔率融合")
 
 
@@ -59,6 +59,8 @@ class TeamPredictResponse(BaseModel):
     away_team_id: int
     away_team_name: str
     scene: str
+    # 胜率
+    home_win_prob: float = Field(..., description="主队胜率 (0-1)")
     # 纯系统预测
     predict_home_score: int
     predict_away_score: int

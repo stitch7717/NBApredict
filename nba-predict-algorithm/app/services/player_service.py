@@ -146,10 +146,7 @@ class PlayerService:
         return 1.0
 
     def _calc_clutch_coeff(self, scene: str) -> float:
-        if scene == "常规赛": return 1.0
-        elif scene == "季后赛": return 1.10
-        elif scene == "关键战": return 1.20
-        return 1.0
+        return 1.10 if scene == "季后赛" else 1.0
 
     def _calc_home_coeff(self, home_away: str) -> float:
         return 1.055 if home_away == "home" else 0.97

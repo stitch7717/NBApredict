@@ -69,12 +69,16 @@ class TeamService:
 
         coefficients["odds_weight"] = 0.20 if request.use_odds else 0
 
+        # 计算胜率
+        home_win_prob = self._calc_win_probability(home_data, away_data)
+
         return TeamPredictResponse(
             home_team_id=request.home_team_id,
             home_team_name=home_team.team_name,
             away_team_id=request.away_team_id,
             away_team_name=away_team.team_name,
             scene=request.scene,
+            home_win_prob=round(home_win_prob, 3),
             predict_home_score=predict_home,
             predict_away_score=predict_away,
             predict_total_score=predict_total,
@@ -515,13 +519,36 @@ class TeamService:
 
     def _calc_scene_coeff(self, scene: str) -> float:
         """比赛场景系数"""
-        if scene == "常规赛":
-            return 1.0
-        elif scene == "季后赛":
-            return 1.08
-        elif scene == "关键战":
-            return 1.15
-        return 1.0
+        return 1.08 if scene == "季后赛" else 1.0
+
+    def _calc_win_probability(self, home_data, away_data) -> float:
+        """log5 公式：基于净效率差 + 主场优势计算胜率"""
+        home_net = getattr(home_data, 'net_rating', 0) or 0
+        away_net = getattr(away_data, 'net_rating', 0) or 0
+        home_advantage = 3.0
+        rating_diff = (home_net - away_net) + home_advantage
+        return 1.0 / (1.0 + 10 ** (-rating_diff / 400.0))
+
+    def get_team_rating(self, team_id: int) -> dict:
+        """获取球队实力评分"""
+        season = "2025-26"
+        with SessionLocal() as db:
+            from app.db.models import Team, TeamData
+            team = db.query(Team).filter(Team.team_id == team_id).first()
+            td = db.query(TeamData).filter(
+                TeamData.team_id == team_id, TeamData.season == season
+            ).first()
+        if not team:
+            return {"error": "球队不存在"}
+        return {
+            "team_id": team_id,
+            "team_name": team.team_name,
+            "net_rating": td.net_rating if td else None,
+            "offensive_rating": td.offensive_rating if td else None,
+            "defensive_rating": td.defensive_rating if td else None,
+            "pace": td.pace if td else None,
+            "win_percentage": float(td.win_percentage) if td and td.win_percentage else None,
+        }
 
     def _calc_style_matchup(self, home_data, away_data) -> tuple:
         """风格克制分析"""
