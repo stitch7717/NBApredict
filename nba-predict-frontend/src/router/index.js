@@ -5,12 +5,44 @@ const routes = [
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     children: [
+      // === v2 新页面 ===
       {
         path: '',
         name: 'Home',
         component: () => import('@/views/home/index.vue'),
         meta: { title: '首页' },
       },
+      {
+        path: 'game/:gameId',
+        name: 'GameDetail',
+        component: () => import('@/views/game/detail.vue'),
+        meta: { title: '比赛详情' },
+      },
+      {
+        path: 'predict',
+        name: 'Predict',
+        component: () => import('@/views/predict/index.vue'),
+        meta: { title: '预测' },
+      },
+      {
+        path: 'players',
+        name: 'Players',
+        component: () => import('@/views/players/index.vue'),
+        meta: { title: '球员数据' },
+      },
+      {
+        path: 'teams',
+        name: 'Teams',
+        component: () => import('@/views/teams/index.vue'),
+        meta: { title: '球队数据' },
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('@/views/settings/index.vue'),
+        meta: { title: '系统设置' },
+      },
+      // === 旧路由保留（兼容） ===
       {
         path: 'player/list',
         name: 'PlayerList',
@@ -42,28 +74,22 @@ const routes = [
         meta: { title: '系列赛' },
       },
       {
-        path: 'odds',
-        name: 'Odds',
-        component: () => import('@/views/odds/index.vue'),
-        meta: { title: '赔率管理' },
-      },
-      {
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '数据看板' },
       },
       {
+        path: 'odds',
+        name: 'Odds',
+        component: () => import('@/views/odds/index.vue'),
+        meta: { title: '赔率管理' },
+      },
+      {
         path: 'record',
         name: 'Record',
         component: () => import('@/views/record/index.vue'),
         meta: { title: '预测记录' },
-      },
-      {
-        path: 'settings',
-        name: 'Settings',
-        component: () => import('@/views/settings/index.vue'),
-        meta: { title: '系统设置' },
       },
     ],
   },

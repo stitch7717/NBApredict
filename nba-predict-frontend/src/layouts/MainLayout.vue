@@ -102,13 +102,10 @@ const router = useRouter()
 const searchQuery = ref('')
 
 const menuItems = [
-  { path: '/', label: '系统首页', icon: 'HomeFilled' },
-  { path: '/player/predict', label: '球员预测', icon: 'User' },
-  { path: '/team/predict', label: '球队预测', icon: 'Trophy' },
-  { path: '/series', label: '系列赛', icon: 'Star' },
-  { path: '/dashboard', label: '数据看板', icon: 'DataAnalysis' },
-  { path: '/odds', label: '赔率管理', icon: 'Money' },
-  { path: '/record', label: '预测记录', icon: 'Document' },
+  { path: '/', label: '首页赛程', icon: 'HomeFilled' },
+  { path: '/predict', label: '比赛预测', icon: 'TrendCharts' },
+  { path: '/players', label: '球员数据', icon: 'User' },
+  { path: '/teams', label: '球队数据', icon: 'Trophy' },
   { path: '/settings', label: '系统设置', icon: 'Setting' },
 ]
 

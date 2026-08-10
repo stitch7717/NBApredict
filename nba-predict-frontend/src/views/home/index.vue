@@ -1,461 +1,463 @@
 <template>
   <div class="home-page">
-    <!-- 欢迎区 -->
-    <div class="welcome-banner animate-fade-in">
-      <div class="welcome-text">
-        <h1>NBA球员与球队表现预测系统</h1>
-        <p>基于数据驱动的智能预测分析平台 · 赛季 2025-26</p>
-      </div>
-      <div class="welcome-art">
-        <svg viewBox="0 0 120 120" width="120" height="120">
-          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(29,66,138,0.3)" stroke-width="2" />
-          <circle cx="60" cy="60" r="35" fill="none" stroke="rgba(200,16,46,0.2)" stroke-width="1.5" />
-          <circle cx="60" cy="60" r="20" fill="none" stroke="rgba(80,200,120,0.2)" stroke-width="1" />
-        </svg>
+    <h2 class="page-title">NBA 赛程</h2>
+
+    <!-- 日期选择 + 标签切换 -->
+    <div class="schedule-controls">
+      <el-date-picker
+        v-model="selectedDate"
+        type="date"
+        placeholder="选择日期"
+        format="YYYY-MM-DD"
+        value-format="YYYY-MM-DD"
+        :clearable="false"
+        class="neu-date-picker"
+        @change="handleDateChange"
+      />
+      <div class="tab-switch">
+        <button
+          :class="['tab-btn', { active: activeTab === 'today' }]"
+          @click="switchTab('today')"
+        >
+          今日赛程
+        </button>
+        <button
+          :class="['tab-btn', { active: activeTab === 'recent' }]"
+          @click="switchTab('recent')"
+        >
+          近期赛果
+        </button>
       </div>
     </div>
 
-    <!-- 核心统计卡片 -->
-    <div class="grid-4 animate-fade-in stagger-1">
-      <div class="stat-card neu-card neu-card--blue">
-        <div class="stat-card-icon">
-          <el-icon :size="24"><User /></el-icon>
-        </div>
-        <div class="stat-card-body">
-          <div class="stat-value">{{ overview.playerCount }}+</div>
-          <div class="stat-label">现役球员数据</div>
-        </div>
-        <div class="stat-change stat-change--up">30+ 维度</div>
-      </div>
-
-      <div class="stat-card neu-card neu-card--green">
-        <div class="stat-card-icon">
-          <el-icon :size="24"><Trophy /></el-icon>
-        </div>
-        <div class="stat-card-body">
-          <div class="stat-value">{{ overview.teamCount }}</div>
-          <div class="stat-label">NBA球队覆盖</div>
-        </div>
-        <div class="stat-change stat-change--up">{{ overview.seasonCount }}赛季</div>
-      </div>
-
-      <div class="stat-card neu-card neu-card--orange">
-        <div class="stat-card-icon">
-          <el-icon :size="24"><DataAnalysis /></el-icon>
-        </div>
-        <div class="stat-card-body">
-          <div class="stat-value stat-value--positive">&le;{{ overview.avgError }}</div>
-          <div class="stat-label">球员预测 MAE</div>
-        </div>
-        <div class="stat-change stat-change--up">优化中</div>
-      </div>
-
-      <div class="stat-card neu-card neu-card--beige">
-        <div class="stat-card-icon">
-          <el-icon :size="24"><Connection /></el-icon>
-        </div>
-        <div class="stat-card-body">
-          <div class="stat-value">{{ overview.sourceCount }}</div>
-          <div class="stat-label">数据源接入</div>
-        </div>
-        <div class="neu-tag neu-tag--green">正常运行</div>
+    <!-- 加载状态 -->
+    <div v-if="loading" class="neu-card">
+      <div class="loading-overlay" style="position:static;min-height:200px">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">赛程加载中...</div>
       </div>
     </div>
 
-    <!-- 功能入口 -->
-    <div class="grid-2 animate-fade-in stagger-2" style="margin-top:24px">
-      <div class="entry-card neu-card" @click="router.push('/player/predict')">
-        <div class="entry-icon entry-icon--blue">
-          <el-icon :size="40"><User /></el-icon>
-        </div>
-        <div class="entry-body">
-          <h3>球员表现预测</h3>
-          <p>预测球员单场得分、命中率等数据区间，支持对位分析</p>
-        </div>
-        <el-icon class="entry-arrow"><ArrowRight /></el-icon>
-      </div>
+    <!-- 比赛列表 -->
+    <template v-else-if="gameList.length">
+      <div class="game-list animate-fade-in">
+        <div
+          v-for="game in gameList"
+          :key="game.gameId"
+          class="game-card neu-card neu-card--flat"
+          @click="goToGame(game.gameId)"
+        >
+          <!-- 左侧: 状态标识 -->
+          <div class="game-status">
+            <span :class="['status-badge', statusClass(game)]">
+              {{ statusText(game) }}
+            </span>
+          </div>
 
-      <div class="entry-card neu-card" @click="router.push('/team/predict')">
-        <div class="entry-icon entry-icon--red">
-          <el-icon :size="40"><Trophy /></el-icon>
-        </div>
-        <div class="entry-body">
-          <h3>球队比分预测</h3>
-          <p>预测球队对战总分、分差及单队得分，支持赔率融合</p>
-        </div>
-        <el-icon class="entry-arrow"><ArrowRight /></el-icon>
-      </div>
-    </div>
-
-    <!-- 系统架构 + 系列赛之星 -->
-    <div class="grid-2 animate-fade-in stagger-3" style="margin-top:24px">
-      <div class="neu-card">
-        <div class="neu-card-header">
-          <span class="title">系统架构</span>
-        </div>
-        <div class="arch-grid">
-          <div class="arch-item">
-            <span class="arch-label">前端</span>
-            <span class="arch-value">Vue3 + Element Plus</span>
-          </div>
-          <div class="arch-item">
-            <span class="arch-label">后端</span>
-            <span class="arch-value">SpringBoot 3.2</span>
-          </div>
-          <div class="arch-item">
-            <span class="arch-label">算法</span>
-            <span class="arch-value">Python + FastAPI</span>
-          </div>
-          <div class="arch-item">
-            <span class="arch-label">数据库</span>
-            <span class="arch-value">MySQL 8.0</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="neu-card">
-        <div class="neu-card-header">
-          <span class="title">最新系列赛之星</span>
-          <el-button type="primary" size="small" @click="router.push('/series')">查看全部</el-button>
-        </div>
-        <div v-if="starsLoading" class="empty-state">
-          <div class="loading-spinner"></div>
-          <div class="loading-text">加载中...</div>
-        </div>
-        <div v-else-if="starPlayers.length" class="star-list">
-          <div v-for="(p, i) in starPlayers" :key="p.starId" class="star-item">
-            <div class="star-rank" :class="'rank-' + (i+1)">{{ i + 1 }}</div>
-            <div class="star-info">
-              <span class="star-name">{{ playerNameMap[p.playerId] || '球员 #' + p.playerId }}</span>
-              <span class="star-team">{{ teamNameMap[p.teamId] || '球队' }} vs {{ teamNameMap[p.opponentTeamId] || '对手' }}</span>
+          <!-- 中间: 对阵信息 -->
+          <div class="game-matchup">
+            <div class="team team--home" :class="{ winner: game.homeWin === 1 }">
+              <span class="team-abbr">{{ teamMap[game.homeTeamId]?.abbreviation || 'HOM' }}</span>
+              <span v-if="isFinished(game)" class="team-score">{{ game.homeScore }}</span>
             </div>
-            <div class="star-stats">
-              <span class="star-pts">{{ p.avgScore }}分</span>
-              <span class="star-pct">{{ (Number(p.avgFgPct) * 100).toFixed(1) }}%</span>
+            <div class="matchup-divider">
+              <span class="vs-text">VS</span>
+              <span v-if="isScheduled(game)" class="game-time">{{ formatTime(game.gameDate) }}</span>
+            </div>
+            <div class="team team--away" :class="{ winner: game.homeWin === 0 }">
+              <span class="team-abbr">{{ teamMap[game.awayTeamId]?.abbreviation || 'AWY' }}</span>
+              <span v-if="isFinished(game)" class="team-score">{{ game.awayScore }}</span>
             </div>
           </div>
+
+          <!-- 右侧: 操作 / 胜者标记 -->
+          <div class="game-action">
+            <template v-if="isFinished(game)">
+              <span class="win-badge" v-if="game.homeWin === 1">主胜</span>
+              <span class="win-badge win-badge--away" v-else>客胜</span>
+              <span class="score-diff">分差 {{ game.scoreDiff }}</span>
+            </template>
+            <template v-else>
+              <el-button type="primary" size="small" class="predict-btn" @click.stop="goToGame(game.gameId)">
+                预测
+              </el-button>
+            </template>
+          </div>
         </div>
-        <div v-else class="empty-state">
-          <el-icon class="empty-icon"><Star /></el-icon>
-          <div class="empty-title">暂无数据</div>
-          <div class="empty-desc">系列赛之星数据将在赛季开始后更新</div>
-        </div>
+      </div>
+    </template>
+
+    <!-- 空状态 -->
+    <div v-else class="neu-card">
+      <div class="empty-state">
+        <el-icon class="empty-icon"><Calendar /></el-icon>
+        <div class="empty-title">今日无比赛</div>
+        <div class="empty-desc">{{ activeTab === 'today' ? '当天没有比赛安排' : '近期没有比赛记录' }}</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Trophy, DataAnalysis, Connection, Star, ArrowRight } from '@element-plus/icons-vue'
-import { seriesApi, playerApi, teamApi, datasourceApi, recordApi } from '@/api'
+import { Calendar } from '@element-plus/icons-vue'
+import { gameApi, teamApi } from '@/api'
 
 const router = useRouter()
 
-const overview = reactive({
-  playerCount: 450,
-  teamCount: 30,
-  seasonCount: 3,
-  avgError: 5,
-  sourceCount: 4,
-})
+const activeTab = ref('today')
+const selectedDate = ref(formatDateStr(new Date()))
+const gameList = ref([])
+const loading = ref(false)
+const teamMap = ref({})
 
-const starPlayers = ref([])
-const starsLoading = ref(false)
-const playerNameMap = ref({})
-const teamNameMap = ref({})
-
-onMounted(() => {
-  loadOverview()
-  loadStarPlayers()
-})
-
-const loadOverview = async () => {
-  // 并行加载各维度数据
-  try {
-    const [teamRes, sourceRes, recordRes] = await Promise.allSettled([
-      teamApi.getList({ page: 1, size: 1 }),
-      datasourceApi.getList(),
-      recordApi.getList({ page: 1, size: 100, status: 'CALIBRATED' }),
-    ])
-
-    if (teamRes.status === 'fulfilled' && teamRes.value?.data) {
-      overview.teamCount = teamRes.value.data.total || 30
-    }
-
-    if (sourceRes.status === 'fulfilled' && sourceRes.value?.data) {
-      const sources = sourceRes.value.data
-      overview.sourceCount = sources.length || 4
-      const activeCount = sources.filter(s => s.status === 'ACTIVE').length
-      if (activeCount > 0) {
-        overview.sourceCount = activeCount
-      }
-    }
-
-    if (recordRes.status === 'fulfilled' && recordRes.value?.data?.records) {
-      const records = recordRes.value.data.records
-      const errors = records.filter(r => r.errorPoints != null).map(r => r.errorPoints)
-      if (errors.length > 0) {
-        const avgError = errors.reduce((a, b) => a + b, 0) / errors.length
-        overview.avgError = avgError.toFixed(1)
-      }
-    }
-  } catch (e) { console.error(e) }
+const formatDateStr = (date) => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
-const loadStarPlayers = async () => {
-  starsLoading.value = true
+const addDays = (dateStr, days) => {
+  const date = new Date(dateStr)
+  date.setDate(date.getDate() + days)
+  return formatDateStr(date)
+}
+
+onMounted(() => {
+  loadTeamMap()
+  loadGames()
+})
+
+const loadTeamMap = async () => {
   try {
-    const res = await seriesApi.getStarList({ page: 1, size: 5, season: '2025-26' })
+    const res = await teamApi.getList({ page: 1, size: 30 })
     const records = res.data?.records || []
-    starPlayers.value = records
-
-    // 异步加载球员名和球队名
-    const playerIds = [...new Set(records.map(r => r.playerId).filter(Boolean))]
-    const teamIds = [...new Set([
-      ...records.map(r => r.teamId),
-      ...records.map(r => r.opponentTeamId),
-    ].filter(Boolean))]
-
-    // 批量并行查询球员名
-    const playerPromises = playerIds.map(pid =>
-      playerApi.getDetail(pid, { silent: true })
-        .then(pRes => { if (pRes.data?.playerName) playerNameMap.value[pid] = pRes.data.playerName })
-        .catch(e => console.error(e))
-    )
-    await Promise.all(playerPromises)
-
-    // 批量查询球队名
-    const teamListRes = await teamApi.getList({ page: 1, size: 30 })
-    if (teamListRes.data?.records) {
-      for (const t of teamListRes.data.records) {
-        teamNameMap.value[t.teamId] = t.teamName
+    for (const t of records) {
+      if (t.teamId != null) {
+        teamMap.value[t.teamId] = t
       }
     }
-  } catch (e) { console.error(e) } finally {
-    starsLoading.value = false
+  } catch (e) {
+    console.error('加载球队列表失败', e)
   }
+}
+
+const loadGames = async () => {
+  loading.value = true
+  try {
+    let params
+    if (activeTab.value === 'today') {
+      params = { gameDate: selectedDate.value, page: 1, size: 100 }
+    } else {
+      // 近期赛果: 最近7天
+      params = {
+        page: 1,
+        size: 200,
+      }
+    }
+
+    const res = await gameApi.getList(params)
+    let records = res.data?.records || []
+
+    if (activeTab.value === 'recent') {
+      // 过滤最近7天
+      const cutoff = addDays(formatDateStr(new Date()), -7)
+      records = records.filter((g) => g.gameDate >= cutoff)
+      records.sort((a, b) => {
+        if (a.gameDate !== b.gameDate) return b.gameDate.localeCompare(a.gameDate)
+        return (b.gameId || 0) - (a.gameId || 0)
+      })
+    }
+
+    gameList.value = records
+  } catch (e) {
+    console.error('加载赛程失败', e)
+    gameList.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleDateChange = () => {
+  if (activeTab.value === 'today') {
+    loadGames()
+  }
+}
+
+const switchTab = (tab) => {
+  activeTab.value = tab
+  if (tab === 'today') {
+    selectedDate.value = formatDateStr(new Date())
+  }
+  loadGames()
+}
+
+const isFinished = (game) => game.status === 'FINISHED'
+const isScheduled = (game) => game.status === 'SCHEDULED'
+const isLive = (game) => game.status === 'LIVE' || game.status === 'IN_PROGRESS'
+
+const statusClass = (game) => {
+  if (isFinished(game)) return 'status--finished'
+  if (isLive(game)) return 'status--live'
+  return 'status--upcoming'
+}
+
+const statusText = (game) => {
+  if (isFinished(game)) return '已结束'
+  if (isLive(game)) return '进行中'
+  return '未开始'
+}
+
+const formatTime = (dateStr) => {
+  if (!dateStr) return ''
+  // gameDate字段是日期，没有具体时间；对未开始比赛显示日期即可
+  const d = new Date(dateStr)
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${m}-${day}`
+}
+
+const goToGame = (gameId) => {
+  router.push(`/game/${gameId}`)
 }
 </script>
 
 <style lang="scss" scoped>
 .home-page {
-  max-width: 1400px;
+  max-width: 1200px;
 }
 
-.welcome-banner {
+// 控制栏
+.schedule-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 32px 36px;
-  background: linear-gradient(135deg, rgba($color-nba-blue, 0.12), rgba($color-nba-red, 0.06));
-  border-radius: $radius-xl;
-  border: 1px solid $border-dark;
-  box-shadow: $neu-raised;
-  margin-bottom: 24px;
-
-  h1 {
-    font-size: 28px;
-    font-weight: 800;
-    color: $text-primary;
-    letter-spacing: -0.5px;
-    margin-bottom: 8px;
-  }
-
-  p {
-    font-size: 15px;
-    color: $text-secondary;
-  }
-}
-
-.welcome-art {
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-
-.stat-card {
-  display: flex;
-  align-items: center;
   gap: 16px;
-  position: relative;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
 }
 
-.stat-card-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: $radius-md;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: $text-primary;
-
-  .stat-card.neu-card--blue & { background: rgba(29,66,138,0.15); }
-  .stat-card.neu-card--green & { background: rgba(168,193,182,0.15); }
-  .stat-card.neu-card--orange & { background: rgba(230,167,98,0.15); }
-  .stat-card.neu-card--beige & { background: rgba(217,199,184,0.15); }
-}
-
-.stat-card-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.entry-card {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 28px 32px;
-  cursor: pointer;
-
-  .entry-icon {
-    width: 80px;
-    height: 80px;
-    border-radius: $radius-lg;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: #fff;
-
-    &--blue { background: linear-gradient(135deg, $color-nba-blue, color.adjust($color-nba-blue, $lightness: 10%)); }
-    &--red { background: linear-gradient(135deg, $color-nba-red, color.adjust($color-nba-red, $lightness: 10%)); }
-  }
-
-  .entry-body {
-    flex: 1;
-
-    h3 {
-      font-size: 20px;
-      font-weight: 700;
-      color: $text-primary;
-      margin-bottom: 6px;
-    }
-
-    p {
-      font-size: 14px;
-      color: $text-secondary;
-      line-height: 1.5;
-    }
-  }
-
-  .entry-arrow {
-    color: $text-muted;
-    font-size: 20px;
-    flex-shrink: 0;
-    transition: transform $transition-fast;
-  }
-
-  &:hover .entry-arrow {
-    transform: translateX(4px);
-    color: $color-nba-blue;
-  }
-}
-
-.arch-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-
-  .arch-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 14px 16px;
+.neu-date-picker {
+  :deep(.el-input__wrapper) {
     background: $bg-elevated;
-    border-radius: $radius-md;
+    box-shadow: $neu-pressed;
     border: 1px solid $border-dark;
-
-    .arch-label {
-      font-size: 12px;
-      color: $text-muted;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .arch-value {
-      font-size: 14px;
-      font-weight: 600;
-      color: $text-primary;
-    }
+    border-radius: $radius-md;
+  }
+  :deep(.el-input__inner) {
+    color: $text-primary;
   }
 }
 
-.star-list {
+.tab-switch {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.star-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
+  gap: 0;
   background: $bg-elevated;
   border-radius: $radius-md;
   border: 1px solid $border-dark;
+  box-shadow: $neu-pressed;
+  overflow: hidden;
+}
+
+.tab-btn {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: $text-secondary;
+  background: transparent;
+  border: none;
+  cursor: pointer;
   transition: all $transition-fast;
 
-  &:hover {
-    background: rgba($color-nba-blue, 0.06);
-    border-color: rgba($color-nba-blue, 0.2);
+  &.active {
+    background: $color-nba-blue;
+    color: #fff;
+    box-shadow: $neu-raised-sm;
+  }
+
+  &:not(.active):hover {
+    color: $text-primary;
+    background: rgba($color-nba-blue, 0.08);
   }
 }
 
-.star-rank {
-  width: 28px;
-  height: 28px;
+// 比赛列表
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 24px;
+  cursor: pointer;
+  transition: all $transition-fast;
+  border-left: 3px solid transparent;
+
+  &:hover {
+    border-left-color: $color-nba-blue;
+  }
+}
+
+// 状态
+.game-status {
+  flex-shrink: 0;
+  width: 64px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
   border-radius: $radius-full;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.status--finished {
+    background: rgba($text-secondary, 0.1);
+    color: $text-secondary;
+    border: 1px solid rgba($text-secondary, 0.2);
+  }
+
+  &.status--upcoming {
+    background: rgba($color-nba-blue, 0.12);
+    color: color.adjust($color-nba-blue, $lightness: 20%);
+    border: 1px solid rgba($color-nba-blue, 0.25);
+  }
+
+  &.status--live {
+    background: rgba($color-nba-red, 0.12);
+    color: $color-nba-red;
+    border: 1px solid rgba($color-nba-red, 0.25);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+}
+
+// 对阵
+.game-matchup {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  flex-shrink: 0;
-  background: $bg-card;
-  color: $text-secondary;
-  border: 1px solid $border-dark;
-
-  &.rank-1 { background: rgba($color-warning, 0.2); color: $color-warning; border-color: rgba($color-warning, 0.3); }
-  &.rank-2 { background: rgba($text-secondary, 0.15); color: $text-secondary; }
-  &.rank-3 { background: rgba($accent-orange, 0.15); color: $accent-orange; }
+  gap: 24px;
 }
 
-.star-info {
-  flex: 1;
-  min-width: 0;
+.team {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 100px;
+  justify-content: flex-end;
 
-  .star-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: $text-primary;
+  &--away {
+    justify-content: flex-start;
   }
 
-  .star-team {
-    font-size: 12px;
+  .team-abbr {
+    font-size: 18px;
+    font-weight: 700;
+    color: $text-primary;
+    letter-spacing: 0.5px;
+  }
+
+  .team-score {
+    font-size: 28px;
+    font-weight: 800;
+    color: $text-primary;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.winner .team-score {
+    color: $color-positive;
+  }
+
+  &.winner .team-abbr {
+    color: $color-positive;
+  }
+}
+
+.matchup-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+
+  .vs-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: $text-muted;
+    padding: 4px 12px;
+    border-radius: $radius-full;
+    background: $bg-elevated;
+    border: 1px solid $border-dark;
+  }
+
+  .game-time {
+    font-size: 11px;
     color: $text-muted;
   }
 }
 
-.star-stats {
+// 操作区
+.game-action {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
+}
 
-  .star-pts {
-    font-size: 15px;
-    font-weight: 700;
-    color: $color-positive;
+.win-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: $radius-full;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba($color-positive, 0.12);
+  color: $color-positive;
+  border: 1px solid rgba($color-positive, 0.25);
+
+  &--away {
+    background: rgba($color-nba-red, 0.12);
+    color: $color-nba-red;
+    border-color: rgba($color-nba-red, 0.25);
+  }
+}
+
+.score-diff {
+  font-size: 11px;
+  color: $text-muted;
+}
+
+.predict-btn {
+  background: $color-nba-blue !important;
+  border-color: $color-nba-blue !important;
+
+  &:hover {
+    background: color.adjust($color-nba-blue, $lightness: 8%) !important;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@media (max-width: $breakpoint-lg) {
+  .game-card {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
   }
 
-  .star-pct {
-    font-size: 12px;
-    color: $text-secondary;
-  }
+  .game-status { width: auto; }
+  .game-matchup { width: 100%; }
+  .team { min-width: 80px; }
 }
 </style>

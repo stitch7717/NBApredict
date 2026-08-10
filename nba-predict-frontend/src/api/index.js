@@ -56,9 +56,25 @@ export const configApi = {
   update: (params) => request.post('/config/update', null, { params }),
 }
 
-// 数据接口
+// 赛程接口
+export const gameApi = {
+  getList: (params) => request.get('/game/list', { params }),
+  getDetail: (id) => request.get(`/game/detail/${id}`),
+  getRecent: (params) => request.get('/game/recent', { params }),
+  getBattle: (params) => request.get('/game/battle', { params }),
+}
+
+// 数据接口 (Python 算法层直连)
 export const dataApi = {
   update: () => request.post('/data/update'),
   getHistory: (params) => request.get('/data/history', { params }),
   backup: () => request.post('/data/backup'),
+  getTeams: (season = '2025-26') => request.get('/data/teams', { params: { season } }),
+  getTeamDetail: (id, season = '2025-26') => request.get(`/data/teams/${id}`, { params: { season } }),
+  getTeamRoster: (id, season = '2025-26') => request.get(`/data/teams/${id}/roster`, { params: { season } }),
+  getPlayers: (params) => request.get('/data/players', { params }),
+  getPlayerDetail: (id, season = '2025-26') => request.get(`/data/players/${id}`, { params: { season } }),
+  getStandings: (season = '2025-26') => request.get('/data/standings', { params: { season } }),
+  getTodayGames: () => request.get('/data/games/today'),
+  getUpcomingGames: () => request.get('/data/games/upcoming'),
 }
