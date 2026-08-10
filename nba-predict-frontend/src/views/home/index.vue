@@ -201,7 +201,7 @@ const loadOverview = async () => {
         overview.avgError = avgError.toFixed(1)
       }
     }
-  } catch {}
+  } catch (e) { console.error(e) }
 }
 
 const loadStarPlayers = async () => {
@@ -225,7 +225,7 @@ const loadStarPlayers = async () => {
         if (pRes.data?.playerName) {
           playerNameMap.value[pid] = pRes.data.playerName
         }
-      } catch {}
+      } catch (e) { console.error(e) }
     }
 
     // 批量查询球队名
@@ -235,7 +235,7 @@ const loadStarPlayers = async () => {
         teamNameMap.value[t.teamId] = t.teamName
       }
     }
-  } catch {} finally {
+  } catch (e) { console.error(e) } finally {
     starsLoading.value = false
   }
 }

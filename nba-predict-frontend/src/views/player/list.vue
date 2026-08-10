@@ -104,7 +104,7 @@ const loadTeams = async () => {
   try {
     const res = await teamApi.getList({ page: 1, size: 30 })
     teamOptions.value = res.data?.records || []
-  } catch {}
+  } catch (e) { console.error(e) }
 }
 
 const loadPlayers = async () => {
@@ -119,7 +119,7 @@ const loadPlayers = async () => {
     })
     players.value = res.data?.records || []
     total.value = res.data?.total || 0
-  } catch {} finally {
+  } catch (e) { console.error(e) } finally {
     loading.value = false
   }
 }

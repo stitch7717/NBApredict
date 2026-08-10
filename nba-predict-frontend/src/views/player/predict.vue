@@ -169,7 +169,7 @@ const searchPlayer = async (query) => {
   try {
     const res = await playerApi.getList({ keyword: query, page: 1, size: 20 })
     playerOptions.value = res.data?.records || []
-  } catch {} finally { playerLoading.value = false }
+  } catch (e) { console.error(e) } finally { playerLoading.value = false }
 }
 
 const searchOpponent = async (query) => {
@@ -177,7 +177,7 @@ const searchOpponent = async (query) => {
   try {
     const res = await playerApi.getList({ keyword: query, page: 1, size: 20 })
     opponentOptions.value = res.data?.records || []
-  } catch {}
+  } catch (e) { console.error(e) }
 }
 
 const handlePredict = async () => {

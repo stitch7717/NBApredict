@@ -114,7 +114,7 @@ const loadSources = async () => {
       initSourceChart()
       initRadarChart()
     }
-  } catch {} finally { sourceLoading.value = false }
+  } catch (e) { console.error(e) } finally { sourceLoading.value = false }
 }
 
 const loadRecords = async () => {
@@ -129,7 +129,7 @@ const loadRecords = async () => {
     if (playerErrorData.value.length) {
       initPlayerChart()
     }
-  } catch {}
+  } catch (e) { console.error(e) }
 }
 
 const processPlayerErrors = () => {

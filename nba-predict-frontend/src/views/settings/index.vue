@@ -106,11 +106,11 @@ const sources = ref([])
 onMounted(() => { loadConfig(); loadSources() })
 
 const loadConfig = async () => {
-  try { await configApi.get() } catch {}
+  try { await configApi.get() } catch (e) { console.error(e) }
 }
 
 const loadSources = async () => {
-  try { const res = await oddsApi.getSource(); sources.value = res.data || [] } catch {}
+  try { const res = await oddsApi.getSource(); sources.value = res.data || [] } catch (e) { console.error(e) }
 }
 
 const saveCoefficients = async () => {

@@ -111,7 +111,7 @@ const loadRecords = async () => {
     const res = await recordApi.getList({ page: page.value, size: size.value, type: predictType.value, status: statusFilter.value })
     records.value = res.data?.records || []
     total.value = res.data?.total || 0
-  } catch {} finally { loading.value = false }
+  } catch (e) { console.error(e) } finally { loading.value = false }
 }
 
 const handleCalibrate = async (row) => {

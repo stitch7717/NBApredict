@@ -166,7 +166,7 @@ onMounted(async () => {
   try {
     const res = await teamApi.getList({ page: 1, size: 30 })
     teamOptions.value = res.data?.records || []
-  } catch {}
+  } catch (e) { console.error(e) }
 })
 
 const handlePredict = async () => {

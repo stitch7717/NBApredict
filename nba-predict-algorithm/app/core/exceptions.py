@@ -46,7 +46,7 @@ def register_exception_handlers(app: FastAPI):
     async def algorithm_exception_handler(request: Request, exc: AlgorithmException):
         logger.error(f"算法异常: {exc.message}")
         return JSONResponse(
-            status_code=200,
+            status_code=exc.code,
             content={
                 "code": exc.code,
                 "message": exc.message,
@@ -63,7 +63,7 @@ def register_exception_handlers(app: FastAPI):
         message = "; ".join(errors)
         logger.error(f"参数校验失败: {message}")
         return JSONResponse(
-            status_code=200,
+            status_code=400,
             content={
                 "code": 400,
                 "message": f"参数校验失败: {message}",
@@ -75,7 +75,7 @@ def register_exception_handlers(app: FastAPI):
     async def general_exception_handler(request: Request, exc: Exception):
         logger.exception(f"未知异常: {str(exc)}")
         return JSONResponse(
-            status_code=200,
+            status_code=500,
             content={
                 "code": 500,
                 "message": "服务器内部错误",

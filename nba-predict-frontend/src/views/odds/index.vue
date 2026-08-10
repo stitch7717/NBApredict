@@ -142,7 +142,7 @@ const loadSources = async () => {
     sources.value = res.data || []
     await nextTick()
     if (sources.value.length) initChart()
-  } catch {} finally { sourceLoading.value = false }
+  } catch (e) { console.error(e) } finally { sourceLoading.value = false }
 }
 
 const evaluateSources = async () => {

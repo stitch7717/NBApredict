@@ -86,7 +86,7 @@ const loadTeams = async () => {
     const res = await teamApi.getList({ page: page.value, size: size.value, conference: conference.value })
     teams.value = res.data?.records || []
     total.value = res.data?.total || 0
-  } catch {} finally { loading.value = false }
+  } catch (e) { console.error(e) } finally { loading.value = false }
 }
 
 const goToPredict = (team) => {

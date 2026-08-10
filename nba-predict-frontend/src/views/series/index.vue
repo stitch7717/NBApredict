@@ -94,7 +94,7 @@ const loadTeams = async () => {
   try {
     const res = await teamApi.getList({ page: 1, size: 30 })
     teams.value = res.data?.records || []
-  } catch {}
+  } catch (e) { console.error(e) }
 }
 
 const loadStars = async () => {
@@ -102,7 +102,7 @@ const loadStars = async () => {
   try {
     const res = await seriesApi.getStarList({ season: season.value, teamId: teamId.value })
     stars.value = res.data || []
-  } catch {} finally { loading.value = false }
+  } catch (e) { console.error(e) } finally { loading.value = false }
 }
 </script>
 
