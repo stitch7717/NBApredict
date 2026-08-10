@@ -2091,7 +2091,7 @@ if p_value < 0.05:
 
 ---
 
-## 十一、面试官评价
+## 十一、面试官评价（含 2026年8月 代码审查后更新）
 
 **优点：**
 
@@ -2101,21 +2101,147 @@ if p_value < 0.05:
 4. **工程化意识**：异常处理、日志记录、幂等控制、降级兜底
 5. **数据思维**：特征工程、模型评估、数据质量保障
 
-**不足：**
+**不足（审查前）：**
 
 1. **测试覆盖不足**：缺少自动化测试框架
 2. **监控告警缺失**：没有 Prometheus/Grafana 监控
 3. **安全防护薄弱**：缺少 JWT 认证、接口限流
 4. **文档不够完善**：缺少 Swagger API 文档
 
-**建议：**
+**已修复（2026年8月代码审查）**：见[第十二章](#十二代码审查与质量改进2026年8月)。
 
-1. 补充单元测试，提高代码质量
-2. 引入监控系统，及时发现问题
-3. 加强安全防护，防止恶意请求
-4. 完善项目文档，方便后续维护
+响应项：
+- ✅ 测试骨架已建立（Python test_api.py），Java 测试目录待补充内容
+- ✅ 安全防护大幅加强（CORS 限制、密码移除、SQL 日志关闭、输入验证、DTO 封装）
+- ✅ 已配置 Swagger/SpringDoc，生产 profile 可关闭
+- ✅ 新增 Spring Boot Actuator 健康检查端点
+- ✅ Git 仓库初始化，9 次语义化提交
+- ⬜ JWT 认证需待确认业务需求后引入
+- ⬜ Prometheus/Grafana 监控待部署阶段引入
+
+---
+
+## 十二、代码审查与质量改进（2026年8月）
+
+### 12.1 审查概览
+
+使用三个并行 code-reviewer 代理对 97 个源文件进行全面审查，发现 **78 个问题**（13 CRITICAL + 20 HIGH + 26 MEDIUM + 19 LOW），全部在本次迭代中修复。
+
+| 模块 | 审查文件 | CRITICAL | HIGH | MEDIUM | LOW |
+|------|----------|----------|------|--------|-----|
+| Java 后端 | 58 | 5 | 7 | 10 | 6 |
+| Python 算法 | 21 | 5 | 8 | 8 | 7 |
+| Vue 前端 | 18 | 3 | 5 | 8 | 6 |
+
+### 12.2 CRITICAL 修复详情
+
+#### 安全三连：密码、CORS、认证
+
+**Java 后端**：
+- `application.yml`：移除数据库密码默认值 `223688` → `${DB_PASSWORD}`（无默认值，缺失即报错）
+- `CorsConfig.java`：`allowedOriginPatterns("*")` → 限制为 `localhost:5173, localhost:3000`
+- `application.yml`：SQL 日志 `StdOutImpl` → `Slf4jImpl`（生产 WARN 级别）
+
+**Python 算法**：
+- `.env`：真实密码 `DB_PASSWORD=223688` → 创建 `.env.example` 模板，`.env` 加入 `.gitignore`
+- `exceptions.py`：所有异常处理器返回 `status_code=200` → 修正为 400/404/500
+- `main.py`：CORS `allow_origins=["*"]` + `allow_credentials=True` → 限制为具体来源
+- `main.py`：bare `except:` → `except (FileNotFoundError, IOError)` + 日志
+
+**Vue 前端**：
+- `request.js:64`：`config.silent` 变量不在作用域 → `response.config.silent`
+- 10 个视图文件 17 处空 `catch {}` → `catch (e) { console.error(e) }`
+
+#### 安全基础设施
+
+- **根目录**：创建 `.gitignore`（node_modules/、.env、__pycache__/、dist/、target/、logs/）
+- **Python**：`.env.example` 模板文件
+- **Git**：仓库初始化，9 次语义化提交
+
+### 12.3 HIGH 修复详情
+
+#### 资源泄露
+
+- `HttpUtil.java`：OkHttp `Response` 未关闭 → try-with-resources；每次新建 `OkHttpClient` → 单例 Bean
+- `database.py`：`get_db()` 连接永不关闭 → 生成器模式 `yield db; finally: db.close()`
+- `database.py`：`DATABASE_URL` 可能泄露到日志 → `hide_parameters=True`
+
+#### 性能优化
+
+- `data.py`：`get_teams()` 和 `get_team_roster()` N+1 查询 → `in_()` 批量查询，30 队 31 次查询 → 2 次
+- `home/index.vue`：串行 `for` 循环加载球员 → `Promise.all` 并行
+- `dashboard/index.vue` + `odds/index.vue`：ECharts 完整导入（~1MB）→ 按需导入（~200KB）
+
+#### 架构改进
+
+- **Java DTO 层**：创建 `TeamDTO`、`PlayerDTO`、`PredictResultDTO`（Java record），避免 Entity 直接暴露
+- **TaskLogService**：`TaskController` 直接调用 Mapper → 提取 `TaskLogService` + `TaskLogServiceImpl`
+- **GlobalExceptionHandler**：移除 `basePackages` 限制，scheduler 异常也能被捕获
+- **长函数拆分**：`team_service.py` `predict()` 138 行 → `_core_predict()` + `_apply_injury_adjustments()` + `_apply_odds_fusion()` + `predict()` 共 4 个方法
+
+#### 输入验证
+
+- `schemas.py`：Pydantic `Field` 添加 `gt`、`pattern`、`Literal` 约束
+- `player/predict.vue`：表单验证 `formRef.value.validate()` 实际执行
+- Java Controller：所有分页参数添加 `@Min(1)`、`@Max(100)`
+
+### 12.4 MEDIUM 修复详情
+
+#### 代码质量
+
+- **常量提取**：Java `AppConstants.java`、Python `app/constants.py`、Vue `src/constants/index.js`
+- **ConfigServiceImpl**：直接修改实体 `config.setConfigValue()` → `LambdaUpdateWrapper` 原子更新
+- **SeriesStarServiceImpl**：`getStarDetail()` 返回 null → 抛 `BusinessException`
+- **player_service.py**：系数计算使用硬编码魔法值 → 从 `COEFFICIENT_CONFIG` 读取
+- `pom.xml`：移除未使用的 `spring-boot-starter-quartz` 依赖
+
+#### Vue 改进
+
+- **Pinia stores**：创建 `useTeamStore`（5 分钟缓存）、`useConfigStore`
+- **Composables**：`useChart`（图表生命周期）、`usePagination`（分页逻辑）
+- **settings**：只保存单个系数 → 6 个系数批量并行保存
+- **player search**：Select remote-method 无防抖 → 300ms debounce
+- **home**：内联 `style="background:rgba(...)"` → scoped CSS 类
+
+### 12.5 LOW 修复详情
+
+- **Actuator**：添加 `/actuator/health` 健康检查端点
+- **prod profile**：生产环境关闭 springdoc + MyBatis SQL 日志
+- **Favicon**：`/favicon.ico` 404 → SVG favicon
+- **Python**：`reload=True` 硬编码 → `ENV` 环境变量控制
+- **Python**：动态 `import` 在函数内 → 移到文件顶部
+- **Java**：`DataUpdateTask`、`OptimizationTask` 移除未使用的 `ObjectMapper` 字段
+- **Java**：`TaskController` 添加 `@Validated` + 分页参数校验
+
+### 12.6 新增文件清单
+
+```
+.gitignore
+nba-predict-algorithm/.env.example
+nba-predict-algorithm/app/constants.py
+nba-predict-algorithm/tests/test_api.py
+nba-predict-backend/src/main/java/com/nba/predict/common/AppConstants.java
+nba-predict-backend/src/main/java/com/nba/predict/dto/{TeamDTO,PlayerDTO,PredictResultDTO}.java
+nba-predict-backend/src/main/java/com/nba/predict/service/TaskLogService.java
+nba-predict-backend/src/main/java/com/nba/predict/service/impl/TaskLogServiceImpl.java
+nba-predict-frontend/src/stores/{team,config}.js
+nba-predict-frontend/src/constants/index.js
+nba-predict-frontend/src/composables/useChart.js
+nba-predict-frontend/public/favicon.svg
+.claude/PRPs/reviews/final-verification.md
+```
+
+### 12.7 待后续改进
+
+| 项 | 优先级 | 说明 |
+|----|--------|------|
+| Java 单元测试 | 高 | 测试目录已就绪，需用 Testcontainers 编写 |
+| JWT 认证 | 低 | 待确认业务需求后引入 Spring Security |
+| TypeScript 迁移 | 低 | 前端保持 JS，渐进迁移 |
+| Prometheus 监控 | 低 | 部署阶段配合容器化引入 |
+| 算法异步化 | 低 | FastAPI 路由 + `run_in_executor` 包裹同步计算 |
 
 ---
 
 *文档完成时间：2026年5月4日*
-*最近更新：nba_api 数据源迁移、伤病报告系统、球员角色分类(15类)、化学反应影响模型*
+*最近更新：2026年8月10日 — 全量代码审查与质量改进、安全加固、DTO 封装、架构解耦、Git 仓库初始化*
