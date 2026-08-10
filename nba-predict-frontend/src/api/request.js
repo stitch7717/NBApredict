@@ -83,4 +83,11 @@ service.interceptors.response.use(
   }
 )
 
+// Python 算法层专用实例（无 /api 前缀，直连 localhost:8000）
+export const pythonRequest = axios.create({
+  baseURL: '',
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
+})
+
 export default service

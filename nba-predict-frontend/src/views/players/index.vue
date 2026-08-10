@@ -323,6 +323,48 @@ const loadTeams = async () => {
   }
 }
 
+// 驼峰 → 下划线映射（前端展示字段 → Python API 排序字段）
+const SORT_FIELD_MAP = {
+  pointsPerGame: 'points_per_game',
+  reboundsPerGame: 'rebounds_per_game',
+  assistsPerGame: 'assists_per_game',
+  fieldGoalPct: 'fg_percentage',
+  threePointPct: 'three_percentage',
+  per: 'per',
+  usageRate: 'usage_rate',
+}
+
+// 下划线 → 驼峰映射（Python API 响应 → 前端展示字段）
+const toCamel = (row) => ({
+  playerId: row.player_id,
+  playerName: row.player_name,
+  playerNameEn: row.player_name_en,
+  position: row.position,
+  teamId: row.team_id,
+  teamName: row.team_name || '',
+  age: row.age,
+  height: row.height,
+  weight: row.weight,
+  gamesPlayed: row.games_played,
+  pointsPerGame: row.points_per_game,
+  reboundsPerGame: row.rebounds_per_game,
+  assistsPerGame: row.assists_per_game,
+  stealsPerGame: row.steals_per_game,
+  blocksPerGame: row.blocks_per_game,
+  turnoversPerGame: row.turnovers_per_game,
+  minutesPerGame: row.minutes_per_game,
+  fieldGoalPct: row.fg_percentage ? (row.fg_percentage * 100).toFixed(1) : null,
+  threePointPct: row.three_percentage ? (row.three_percentage * 100).toFixed(1) : null,
+  ftPercentage: row.ft_percentage,
+  per: row.per,
+  trueShootingPct: row.true_shooting_pct,
+  usageRate: row.usage_rate,
+  offensiveRating: row.offensive_rating,
+  defensiveRating: row.defensive_rating,
+  netRating: row.net_rating,
+  effectiveFgPct: row.effective_fg_pct,
+})
+
 const loadPlayers = async () => {
   loading.value = true
   expandedPlayer.value = null
@@ -330,8 +372,8 @@ const loadPlayers = async () => {
   try {
     const params = {
       season: season.value,
-      sort_by: sortBy.value,
-      sort_order: sortOrder.value,
+      sort_by: SORT_FIELD_MAP[sortBy.value] || 'points_per_game',
+      order: sortOrder.value === 'asc' ? 'asc' : 'desc',
       page: page.value,
       limit: limit.value,
     }
@@ -340,9 +382,10 @@ const loadPlayers = async () => {
     if (keyword.value) params.keyword = keyword.value
 
     const res = await dataApi.getPlayers(params)
-    const data = res.data || res
-    players.value = data.records || data.players || data || []
-    total.value = data.total || players.value.length
+    const body = res.data || res
+    const rawItems = body?.items || []
+    players.value = rawItems.map(toCamel)
+    total.value = body?.total || players.value.length
   } catch (e) {
     console.error(e)
   } finally {

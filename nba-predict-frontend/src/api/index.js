@@ -1,4 +1,4 @@
-import request from './request'
+import request, { pythonRequest } from './request'
 
 // 球员接口
 export const playerApi = {
@@ -64,17 +64,17 @@ export const gameApi = {
   getBattle: (params) => request.get('/game/battle', { params }),
 }
 
-// 数据接口 (Python 算法层直连)
+// 数据接口 (Python 算法层直连，无 /api 前缀)
 export const dataApi = {
-  update: () => request.post('/data/update'),
-  getHistory: (params) => request.get('/data/history', { params }),
-  backup: () => request.post('/data/backup'),
-  getTeams: (season = '2025-26') => request.get('/data/teams', { params: { season } }),
-  getTeamDetail: (id, season = '2025-26') => request.get(`/data/teams/${id}`, { params: { season } }),
-  getTeamRoster: (id, season = '2025-26') => request.get(`/data/teams/${id}/roster`, { params: { season } }),
-  getPlayers: (params) => request.get('/data/players', { params }),
-  getPlayerDetail: (id, season = '2025-26') => request.get(`/data/players/${id}`, { params: { season } }),
-  getStandings: (season = '2025-26') => request.get('/data/standings', { params: { season } }),
-  getTodayGames: () => request.get('/data/games/today'),
-  getUpcomingGames: () => request.get('/data/games/upcoming'),
+  update: () => pythonRequest.post('/data/update'),
+  getHistory: (params) => pythonRequest.get('/data/history', { params }),
+  backup: () => pythonRequest.post('/data/backup'),
+  getTeams: (season = '2025-26') => pythonRequest.get('/data/teams', { params: { season } }),
+  getTeamDetail: (id, season = '2025-26') => pythonRequest.get(`/data/teams/${id}`, { params: { season } }),
+  getTeamRoster: (id, season = '2025-26') => pythonRequest.get(`/data/teams/${id}/roster`, { params: { season } }),
+  getPlayers: (params) => pythonRequest.get('/data/players', { params }),
+  getPlayerDetail: (id, season = '2025-26') => pythonRequest.get(`/data/players/${id}`, { params: { season } }),
+  getStandings: (season = '2025-26') => pythonRequest.get('/data/standings', { params: { season } }),
+  getTodayGames: () => pythonRequest.get('/data/games/today'),
+  getUpcomingGames: () => pythonRequest.get('/data/games/upcoming'),
 }

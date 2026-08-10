@@ -348,8 +348,9 @@ const loadPlayerPredictions = async () => {
         : homeRosterRes.value.data.players || []
       homePlayers.value = roster.map((p) => ({
         ...p,
-        playerId: p.playerId || p.id,
-        playerName: p.playerName || p.name,
+        playerId: p.playerId || p.player_id || p.id,
+        playerName: p.playerName || p.player_name || p.name,
+        pointsPerGame: p.pointsPerGame || p.points_per_game || p.season_data?.points_per_game,
       }))
       await predictPlayers(homePlayers.value, 'home')
     }
@@ -360,8 +361,9 @@ const loadPlayerPredictions = async () => {
         : awayRosterRes.value.data.players || []
       awayPlayers.value = roster.map((p) => ({
         ...p,
-        playerId: p.playerId || p.id,
-        playerName: p.playerName || p.name,
+        playerId: p.playerId || p.player_id || p.id,
+        playerName: p.playerName || p.player_name || p.name,
+        pointsPerGame: p.pointsPerGame || p.points_per_game || p.season_data?.points_per_game,
       }))
       await predictPlayers(awayPlayers.value, 'away')
     }
