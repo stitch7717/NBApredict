@@ -93,8 +93,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  HomeFilled, User, Trophy, Star, DataAnalysis,
-  Money, Document, Setting, Search, Bell, FullScreen, UserFilled
+  HomeFilled, User, Trophy, TrendCharts, Setting, Search, Bell, FullScreen
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -102,11 +101,11 @@ const router = useRouter()
 const searchQuery = ref('')
 
 const menuItems = [
-  { path: '/', label: '首页赛程', icon: 'HomeFilled' },
-  { path: '/predict', label: '比赛预测', icon: 'TrendCharts' },
-  { path: '/players', label: '球员数据', icon: 'User' },
-  { path: '/teams', label: '球队数据', icon: 'Trophy' },
-  { path: '/settings', label: '系统设置', icon: 'Setting' },
+  { path: '/', label: '首页赛程', icon: HomeFilled },
+  { path: '/predict', label: '比赛预测', icon: TrendCharts },
+  { path: '/players', label: '球员数据', icon: User },
+  { path: '/teams', label: '球队数据', icon: Trophy },
+  { path: '/settings', label: '系统设置', icon: Setting },
 ]
 
 const currentTitle = computed(() => {
