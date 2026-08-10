@@ -16,6 +16,10 @@ class PlayerService:
         self.player_dao = PlayerDAO()
         self.config_dao = ConfigDAO()
 
+    def _get_coeff_config(self) -> dict:
+        """获取系数配置(优先数据库，回退到配置文件)"""
+        return COEFFICIENT_CONFIG
+
     def predict(self, request: PlayerPredictRequest) -> PlayerPredictResponse:
         player = self.player_dao.get_player(request.player_id)
         if not player:
@@ -112,25 +116,33 @@ class PlayerService:
         }
 
     def _calc_all_star_coeff(self, player) -> float:
+        cfg = self._get_coeff_config()
         count = player.all_star_count or 0
+        base = cfg.get("all_star_coeff", {}).get("value", 1.20)
+        coeff_range = cfg.get("all_star_coeff", {})
+        min_v, max_v = coeff_range.get("min", 1.0), coeff_range.get("max", 1.40)
         if count == 0: return 1.0
-        elif count <= 2: return 1.10
-        elif count <= 5: return 1.20
-        elif count <= 8: return 1.30
-        else: return 1.40
+        elif count <= 2: return round(base - 0.10, 2)
+        elif count <= 5: return base
+        elif count <= 8: return round(base + 0.10, 2)
+        else: return max_v
 
     def _calc_veteran_coeff(self, player) -> float:
+        cfg = self._get_coeff_config()
+        base = cfg.get("veteran_coeff", {}).get("value", 0.875)
         age = player.age or 25
         if age < 30: return 1.0
-        elif age < 33: return 0.95
-        elif age < 36: return 0.90
-        else: return 0.80
+        elif age < 33: return round(base + 0.075, 2)
+        elif age < 36: return base
+        else: return round(base - 0.075, 2)
 
     def _calc_injury_coeff(self, player) -> float:
+        cfg = self._get_coeff_config()
+        base = cfg.get("injury_coeff", {}).get("value", 0.85)
         status = player.injury_status or "HEALTHY"
         if status == "HEALTHY": return 1.0
-        elif status == "RECOVERY": return 0.85
-        elif status == "INJURED": return 0.70
+        elif status == "RECOVERY": return base
+        elif status == "INJURED": return round(base - 0.15, 2)
         return 1.0
 
     def _calc_clutch_coeff(self, scene: str) -> float:

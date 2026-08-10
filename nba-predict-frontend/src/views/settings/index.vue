@@ -115,8 +115,13 @@ const loadSources = async () => {
 
 const saveCoefficients = async () => {
   try {
-    await configApi.update({ configGroup: 'COEFFICIENT', configKey: 'all_star_coeff', configValue: coeffForm.allStarCoeff.toString() })
-    ElMessage.success('系数已保存')
+    const keys = ['all_star_coeff', 'veteran_coeff', 'injury_coeff', 'clutch_coeff', 'home_coeff', 'fatigue_coeff']
+    const values = [coeffForm.allStarCoeff, coeffForm.veteranCoeff, coeffForm.injuryCoeff,
+                    coeffForm.clutchCoeff, coeffForm.homeCoeff, coeffForm.fatigueCoeff]
+    await Promise.all(keys.map((key, i) =>
+      configApi.update({ configGroup: 'COEFFICIENT', configKey: key, configValue: values[i].toString() })
+    ))
+    ElMessage.success('全部系数已保存')
   } catch { ElMessage.error('保存失败') }
 }
 

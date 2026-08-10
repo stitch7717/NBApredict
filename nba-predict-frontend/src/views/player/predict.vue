@@ -12,7 +12,7 @@
 
           <el-form :model="form" label-width="90px" :rules="rules" ref="formRef">
             <el-form-item label="选择球员" prop="playerId" required>
-              <el-select v-model="form.playerId" filterable remote placeholder="搜索球员姓名" :remote-method="searchPlayer" :loading="playerLoading" style="width:100%">
+              <el-select v-model="form.playerId" filterable remote placeholder="搜索球员姓名" :remote-method="searchPlayerDebounced" :loading="playerLoading" style="width:100%">
                 <el-option v-for="item in playerOptions" :key="item.id" :label="item.name" :value="item.id" />
               </el-select>
             </el-form-item>
@@ -172,6 +172,12 @@ const searchPlayer = async (query) => {
   } catch (e) { console.error(e) } finally { playerLoading.value = false }
 }
 
+let searchTimer = null
+const searchPlayerDebounced = (query) => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => searchPlayer(query), 300)
+}
+
 const searchOpponent = async (query) => {
   if (!query) return
   try {
@@ -182,6 +188,9 @@ const searchOpponent = async (query) => {
 
 const handlePredict = async () => {
   if (!form.playerId) { ElMessage.warning('请选择球员'); return }
+  try {
+    await formRef.value?.validate()
+  } catch { return }
   predicting.value = true
   try {
     const res = await playerApi.predict({ ...form })

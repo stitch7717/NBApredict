@@ -218,15 +218,13 @@ const loadStarPlayers = async () => {
       ...records.map(r => r.opponentTeamId),
     ].filter(Boolean))]
 
-    // 批量查询球员名
-    for (const pid of playerIds) {
-      try {
-        const pRes = await playerApi.getDetail(pid, { silent: true })
-        if (pRes.data?.playerName) {
-          playerNameMap.value[pid] = pRes.data.playerName
-        }
-      } catch (e) { console.error(e) }
-    }
+    // 批量并行查询球员名
+    const playerPromises = playerIds.map(pid =>
+      playerApi.getDetail(pid, { silent: true })
+        .then(pRes => { if (pRes.data?.playerName) playerNameMap.value[pid] = pRes.data.playerName })
+        .catch(e => console.error(e))
+    )
+    await Promise.all(playerPromises)
 
     // 批量查询球队名
     const teamListRes = await teamApi.getList({ page: 1, size: 30 })

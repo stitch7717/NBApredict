@@ -2,7 +2,9 @@ package com.nba.predict.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.nba.predict.common.ResultCode;
 import com.nba.predict.entity.SeriesStar;
+import com.nba.predict.exception.BusinessException;
 import com.nba.predict.mapper.SeriesStarMapper;
 import com.nba.predict.service.SeriesStarService;
 import com.nba.predict.util.HttpUtil;
@@ -43,7 +45,11 @@ public class SeriesStarServiceImpl implements SeriesStarService {
 
     @Override
     public SeriesStar getStarDetail(Long starId) {
-        return seriesStarMapper.selectById(starId);
+        SeriesStar star = seriesStarMapper.selectById(starId);
+        if (star == null) {
+            throw new BusinessException(ResultCode.STAR_NOT_FOUND);
+        }
+        return star;
     }
 
     @Override

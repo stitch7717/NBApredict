@@ -1,6 +1,7 @@
 package com.nba.predict.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.nba.predict.entity.SystemConfig;
 import com.nba.predict.mapper.SystemConfigMapper;
 import com.nba.predict.service.ConfigService;
@@ -53,13 +54,12 @@ public class ConfigServiceImpl implements ConfigService {
 
     @Override
     public void updateConfig(String configGroup, String configKey, String configValue) {
-        SystemConfig config = systemConfigMapper.selectOne(
-                new LambdaQueryWrapper<SystemConfig>()
-                        .eq(SystemConfig::getConfigGroup, configGroup)
-                        .eq(SystemConfig::getConfigKey, configKey));
-        if (config != null) {
-            config.setConfigValue(configValue);
-            systemConfigMapper.updateById(config);
+        LambdaUpdateWrapper<SystemConfig> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(SystemConfig::getConfigGroup, configGroup)
+                     .eq(SystemConfig::getConfigKey, configKey)
+                     .set(SystemConfig::getConfigValue, configValue);
+        int updated = systemConfigMapper.update(null, updateWrapper);
+        if (updated > 0) {
             log.info("配置已更新: {}.{} = {}", configGroup, configKey, configValue);
         }
     }
