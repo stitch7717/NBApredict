@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/datasource")
 @RequiredArgsConstructor
-@Validated
 public class OddsSourceController {
 
     private final OddsSourceService oddsSourceService;

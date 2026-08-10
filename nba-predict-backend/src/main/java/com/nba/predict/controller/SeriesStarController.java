@@ -10,14 +10,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "系列赛接口")
 @RestController
 @RequestMapping("/series")
 @RequiredArgsConstructor
-@Validated
 public class SeriesStarController {
 
     private final SeriesStarService seriesStarService;

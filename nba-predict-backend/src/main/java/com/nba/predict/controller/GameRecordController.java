@@ -11,7 +11,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -20,7 +19,6 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/game")
 @RequiredArgsConstructor
-@Validated
 public class GameRecordController {
 
     private final GameRecordService gameRecordService;

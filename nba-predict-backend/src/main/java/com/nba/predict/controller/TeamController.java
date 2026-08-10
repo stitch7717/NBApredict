@@ -11,14 +11,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "球队接口")
 @RestController
 @RequestMapping("/team")
 @RequiredArgsConstructor
-@Validated
 public class TeamController {
 
     private final TeamService teamService;
