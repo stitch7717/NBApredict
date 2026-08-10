@@ -1,0 +1,26 @@
+{
+  "baseline": {
+    "mae_total": 20.14,
+    "mae_diff": 13.946,
+    "win_acc": 0.635,
+    "count": 1729,
+    "combined": 41.058
+  },
+  "best_params": {
+    "strength_weights": "(0.3, 0.3, 0.4)",
+    "home_base": "1.03",
+    "playoff_boost": "1.0",
+    "off_rtg_base": "114.0",
+    "def_rtg_base": "108.0",
+    "style_strong": "1.02",
+    "style_weak": "0.98"
+  },
+  "best_result": {
+    "mae_total": 17.768,
+    "mae_diff": 13.088,
+    "win_acc": 0.6374,
+    "count": 1729,
+    "combined": 37.4
+  },
+  "improvement_pct": 8.9
+}

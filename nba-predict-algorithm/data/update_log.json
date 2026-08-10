@@ -1,0 +1,46 @@
+[
+  {
+    "date": "2026-05-02 22:33:36",
+    "total_time": 278.8,
+    "steps": {
+      "抓取比赛记录": {
+        "success": true,
+        "time": 214.3
+      },
+      "计算球队统计": {
+        "success": true,
+        "time": 0.0
+      },
+      "更新球员阵容": {
+        "success": true,
+        "time": 64.5
+      },
+      "抓取球员数据": {
+        "success": false,
+        "time": 0.0
+      }
+    }
+  },
+  {
+    "date": "2026-05-03 01:16:03",
+    "total_time": 167.7,
+    "steps": {
+      "抓取比赛记录": {
+        "success": true,
+        "time": 133.3
+      },
+      "计算球队统计": {
+        "success": true,
+        "time": 0.0
+      },
+      "更新球员阵容": {
+        "success": true,
+        "time": 34.4
+      },
+      "抓取球员数据": {
+        "success": false,
+        "time": 0.0
+      }
+    }
+  }
+]

@@ -1,0 +1,367 @@
+{
+  "team_validation": {
+    "2023-24": {
+      "season": "2023-24",
+      "base_season": "2022-23",
+      "total_games": 848,
+      "skipped": 0,
+      "overall": {
+        "mae_total": 20.4,
+        "mae_diff": 13.71,
+        "win_accuracy": 0.6097
+      },
+      "regular_season": {
+        "count": 783,
+        "mae_total": 18.13,
+        "mae_diff": 13.56,
+        "win_accuracy": 0.6169
+      },
+      "playoffs": {
+        "count": 65,
+        "mae_total": 47.71,
+        "mae_diff": 15.46,
+        "win_accuracy": 0.5231
+      }
+    },
+    "2024-25": {
+      "season": "2024-25",
+      "base_season": "2023-24",
+      "total_games": 806,
+      "skipped": 0,
+      "overall": {
+        "mae_total": 21.77,
+        "mae_diff": 14.64,
+        "win_accuracy": 0.6104
+      },
+      "regular_season": {
+        "count": 755,
+        "mae_total": 20.23,
+        "mae_diff": 14.73,
+        "win_accuracy": 0.6026
+      },
+      "playoffs": {
+        "count": 51,
+        "mae_total": 44.57,
+        "mae_diff": 13.35,
+        "win_accuracy": 0.7255
+      }
+    },
+    "2025-26": {
+      "season": "2025-26",
+      "base_season": "2024-25",
+      "total_games": 919,
+      "skipped": 0,
+      "overall": {
+        "mae_total": 22.28,
+        "mae_diff": 15.47,
+        "win_accuracy": 0.5408
+      },
+      "regular_season": {
+        "count": 784,
+        "mae_total": 17.55,
+        "mae_diff": 15.82,
+        "win_accuracy": 0.5306
+      },
+      "playoffs": {
+        "count": 135,
+        "mae_total": 49.7,
+        "mae_diff": 13.42,
+        "win_accuracy": 0.6
+      }
+    }
+  },
+  "player_validation": {
+    "2023-24": {
+      "season": "2023-24",
+      "error": "无球员数据"
+    },
+    "2024-25": {
+      "season": "2024-25",
+      "total_players": 89,
+      "overall_mae_pts": 1.4,
+      "by_position": {
+        "SF": {
+          "count": 21,
+          "mae_pts": 1.7,
+          "avg_coeff": 0.984
+        },
+        "SG": {
+          "count": 20,
+          "mae_pts": 0.98,
+          "avg_coeff": 1.013
+        },
+        "C": {
+          "count": 15,
+          "mae_pts": 1.27,
+          "avg_coeff": 1.013
+        },
+        "PG": {
+          "count": 18,
+          "mae_pts": 1.35,
+          "avg_coeff": 1.022
+        },
+        "PF": {
+          "count": 15,
+          "mae_pts": 1.75,
+          "avg_coeff": 1.011
+        }
+      },
+      "top_deviations": [
+        {
+          "player_id": 171,
+          "name": "Kawhi Leonard",
+          "position": "SF",
+          "team_id": 20,
+          "predict_pts": 15.7,
+          "actual_pts": 24.1,
+          "total_coeff": 0.652,
+          "fg_pct": 0.551,
+          "ts_pct": 0.579
+        },
+        {
+          "player_id": 84,
+          "name": "Jayson Tatum",
+          "position": "SF",
+          "team_id": 2,
+          "predict_pts": 40.1,
+          "actual_pts": 33.5,
+          "total_coeff": 1.198,
+          "fg_pct": 0.498,
+          "ts_pct": 0.523
+        },
+        {
+          "player_id": 110,
+          "name": "Anthony Davis",
+          "position": "PF",
+          "team_id": 21,
+          "predict_pts": 31.9,
+          "actual_pts": 26.1,
+          "total_coeff": 1.222,
+          "fg_pct": 0.542,
+          "ts_pct": 0.569
+        },
+        {
+          "player_id": 93,
+          "name": "Giannis Antetokounmpo",
+          "position": "PF",
+          "team_id": 10,
+          "predict_pts": 47.8,
+          "actual_pts": 42.1,
+          "total_coeff": 1.135,
+          "fg_pct": 0.404,
+          "ts_pct": 0.424
+        },
+        {
+          "player_id": 95,
+          "name": "Khris Middleton",
+          "position": "SF",
+          "team_id": 10,
+          "predict_pts": 18.9,
+          "actual_pts": 23.2,
+          "total_coeff": 0.816,
+          "fg_pct": 0.55,
+          "ts_pct": 0.578
+        },
+        {
+          "player_id": 97,
+          "name": "Shai Gilgeous-Alexander",
+          "position": "SG",
+          "team_id": 25,
+          "predict_pts": 27.7,
+          "actual_pts": 23.8,
+          "total_coeff": 1.164,
+          "fg_pct": 0.447,
+          "ts_pct": 0.469
+        },
+        {
+          "player_id": 149,
+          "name": "Trae Young",
+          "position": "PG",
+          "team_id": 1,
+          "predict_pts": 27.1,
+          "actual_pts": 23.3,
+          "total_coeff": 1.164,
+          "fg_pct": 0.467,
+          "ts_pct": 0.49
+        },
+        {
+          "player_id": 101,
+          "name": "Nikola Jokic",
+          "position": "C",
+          "team_id": 17,
+          "predict_pts": 29.2,
+          "actual_pts": 25.7,
+          "total_coeff": 1.135,
+          "fg_pct": 0.473,
+          "ts_pct": 0.497
+        },
+        {
+          "player_id": 113,
+          "name": "Luka Doncic",
+          "position": "PG",
+          "team_id": 16,
+          "predict_pts": 24.3,
+          "actual_pts": 20.9,
+          "total_coeff": 1.164,
+          "fg_pct": 0.497,
+          "ts_pct": 0.522
+        },
+        {
+          "player_id": 109,
+          "name": "LeBron James",
+          "position": "SF",
+          "team_id": 21,
+          "predict_pts": 38.0,
+          "actual_pts": 35.0,
+          "total_coeff": 1.086,
+          "fg_pct": 0.436,
+          "ts_pct": 0.458
+        }
+      ]
+    },
+    "2025-26": {
+      "season": "2025-26",
+      "total_players": 89,
+      "overall_mae_pts": 1.47,
+      "by_position": {
+        "SF": {
+          "count": 21,
+          "mae_pts": 1.87,
+          "avg_coeff": 0.99
+        },
+        "SG": {
+          "count": 20,
+          "mae_pts": 0.96,
+          "avg_coeff": 1.024
+        },
+        "C": {
+          "count": 15,
+          "mae_pts": 1.36,
+          "avg_coeff": 1.017
+        },
+        "PG": {
+          "count": 18,
+          "mae_pts": 1.52,
+          "avg_coeff": 1.03
+        },
+        "PF": {
+          "count": 15,
+          "mae_pts": 1.67,
+          "avg_coeff": 1.023
+        }
+      },
+      "top_deviations": [
+        {
+          "player_id": 171,
+          "name": "Kawhi Leonard",
+          "position": "SF",
+          "team_id": 20,
+          "predict_pts": 15.7,
+          "actual_pts": 24.1,
+          "total_coeff": 0.652,
+          "fg_pct": 0.564,
+          "ts_pct": 0.592
+        },
+        {
+          "player_id": 84,
+          "name": "Jayson Tatum",
+          "position": "SF",
+          "team_id": 2,
+          "predict_pts": 38.1,
+          "actual_pts": 31.8,
+          "total_coeff": 1.198,
+          "fg_pct": 0.472,
+          "ts_pct": 0.496
+        },
+        {
+          "player_id": 110,
+          "name": "Anthony Davis",
+          "position": "PF",
+          "team_id": 21,
+          "predict_pts": 34.0,
+          "actual_pts": 27.8,
+          "total_coeff": 1.222,
+          "fg_pct": 0.556,
+          "ts_pct": 0.584
+        },
+        {
+          "player_id": 93,
+          "name": "Giannis Antetokounmpo",
+          "position": "PF",
+          "team_id": 10,
+          "predict_pts": 46.1,
+          "actual_pts": 40.6,
+          "total_coeff": 1.135,
+          "fg_pct": 0.386,
+          "ts_pct": 0.405
+        },
+        {
+          "player_id": 95,
+          "name": "Khris Middleton",
+          "position": "SF",
+          "team_id": 10,
+          "predict_pts": 20.8,
+          "actual_pts": 25.5,
+          "total_coeff": 0.816,
+          "fg_pct": 0.561,
+          "ts_pct": 0.589
+        },
+        {
+          "player_id": 113,
+          "name": "Luka Doncic",
+          "position": "PG",
+          "team_id": 16,
+          "predict_pts": 25.6,
+          "actual_pts": 21.3,
+          "total_coeff": 1.2,
+          "fg_pct": 0.473,
+          "ts_pct": 0.497
+        },
+        {
+          "player_id": 109,
+          "name": "LeBron James",
+          "position": "SF",
+          "team_id": 21,
+          "predict_pts": 38.1,
+          "actual_pts": 34.0,
+          "total_coeff": 1.12,
+          "fg_pct": 0.459,
+          "ts_pct": 0.482
+        },
+        {
+          "player_id": 149,
+          "name": "Trae Young",
+          "position": "PG",
+          "team_id": 1,
+          "predict_pts": 29.4,
+          "actual_pts": 25.3,
+          "total_coeff": 1.164,
+          "fg_pct": 0.481,
+          "ts_pct": 0.505
+        },
+        {
+          "player_id": 97,
+          "name": "Shai Gilgeous-Alexander",
+          "position": "SG",
+          "team_id": 25,
+          "predict_pts": 27.1,
+          "actual_pts": 23.3,
+          "total_coeff": 1.164,
+          "fg_pct": 0.462,
+          "ts_pct": 0.485
+        },
+        {
+          "player_id": 101,
+          "name": "Nikola Jokic",
+          "position": "C",
+          "team_id": 17,
+          "predict_pts": 31.1,
+          "actual_pts": 27.4,
+          "total_coeff": 1.135,
+          "fg_pct": 0.46,
+          "ts_pct": 0.483
+        }
+      ]
+    }
+  }
+}

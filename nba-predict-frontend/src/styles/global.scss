@@ -1,0 +1,734 @@
+// ============================================
+// 全局基础样式
+// ============================================
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: $bg-base;
+  color: $text-primary;
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+#app {
+  height: 100%;
+}
+
+a { color: $color-info; text-decoration: none; }
+a:hover { color: color.adjust($color-info, $lightness: 10%); }
+
+// ============================================
+// 新拟态卡片组件
+// ============================================
+
+.neu-card {
+  background: $bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $neu-raised;
+  border: 1px solid $border-dark;
+  padding: $space-lg;
+  transition: box-shadow $transition-normal, transform $transition-normal;
+
+  &:hover {
+    box-shadow: $neu-raised-lg;
+    transform: translateY(-2px);
+  }
+
+  &--flat {
+    box-shadow: $neu-flat;
+    &:hover { box-shadow: $neu-raised-sm; }
+  }
+
+  &--pressed {
+    box-shadow: $neu-pressed;
+    &:hover { box-shadow: $neu-flat; }
+  }
+
+  &--green { border-left: 3px solid $accent-green; }
+  &--orange { border-left: 3px solid $accent-orange; }
+  &--beige { border-left: 3px solid $accent-beige; }
+  &--positive { border-left: 3px solid $color-positive; }
+  &--negative { border-left: 3px solid $color-negative; }
+  &--blue { border-left: 3px solid $color-nba-blue; }
+  &--red { border-left: 3px solid $color-nba-red; }
+}
+
+.neu-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $space-md;
+  padding-bottom: $space-md;
+  border-bottom: 1px solid $border-dark;
+
+  .title {
+    font-size: 16px;
+    font-weight: 600;
+    color: $text-primary;
+  }
+}
+
+// ============================================
+// 新拟态按钮
+// ============================================
+
+.neu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 24px;
+  border-radius: $radius-md;
+  border: 1px solid $border-dark;
+  background: $bg-card;
+  color: $text-primary;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $transition-fast;
+  box-shadow: $neu-raised-sm;
+  outline: none;
+
+  &:hover {
+    box-shadow: $neu-raised;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    box-shadow: $neu-pressed;
+    transform: translateY(0);
+  }
+
+  &--primary {
+    background: $color-nba-blue;
+    border-color: color.adjust($color-nba-blue, $lightness: -8%);
+    color: #fff;
+    box-shadow:
+      3px 3px 6px rgba(0, 0, 0, 0.4),
+      -3px -3px 6px rgba(29, 66, 138, 0.2);
+
+    &:hover {
+      background: color.adjust($color-nba-blue, $lightness: 6%);
+      box-shadow:
+        5px 5px 10px rgba(0, 0, 0, 0.4),
+        -5px -5px 10px rgba(29, 66, 138, 0.2);
+    }
+  }
+
+  &--success {
+    background: rgba($color-positive, 0.15);
+    border-color: rgba($color-positive, 0.3);
+    color: $color-positive;
+  }
+
+  &--danger {
+    background: rgba($color-negative, 0.15);
+    border-color: rgba($color-negative, 0.3);
+    color: $color-negative;
+  }
+
+  &--sm {
+    padding: 6px 16px;
+    font-size: 12px;
+  }
+
+  &--lg {
+    padding: 14px 32px;
+    font-size: 16px;
+  }
+}
+
+// ============================================
+// 新拟态输入框
+// ============================================
+
+.neu-input {
+  width: 100%;
+  padding: 10px 16px;
+  background: $bg-elevated;
+  border: 1px solid $border-dark;
+  border-radius: $radius-md;
+  color: $text-primary;
+  font-size: 14px;
+  transition: all $transition-fast;
+  box-shadow: $neu-pressed;
+  outline: none;
+
+  &::placeholder { color: $text-muted; }
+
+  &:focus {
+    border-color: $color-nba-blue;
+    box-shadow:
+      inset 2px 2px 5px $neu-inset-dark,
+      inset -2px -2px 5px $neu-inset-light,
+      0 0 0 2px rgba($color-nba-blue, 0.2);
+  }
+}
+
+// ============================================
+// 统计数值组件
+// ============================================
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+
+  &--sm { font-size: 24px; }
+  &--lg { font-size: 42px; }
+  &--positive { color: $color-positive; }
+  &--negative { color: $color-negative; }
+}
+
+.stat-label {
+  font-size: 13px;
+  color: $text-secondary;
+  margin-top: $space-xs;
+}
+
+.stat-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: $radius-full;
+
+  &--up {
+    color: $color-positive;
+    background: rgba($color-positive, 0.12);
+  }
+
+  &--down {
+    color: $color-negative;
+    background: rgba($color-negative, 0.12);
+  }
+}
+
+// ============================================
+// 标签
+// ============================================
+
+.neu-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: $radius-full;
+  font-size: 12px;
+  font-weight: 500;
+
+  &--blue {
+    background: rgba($color-nba-blue, 0.15);
+    color: color.adjust($color-nba-blue, $lightness: 20%);
+    border: 1px solid rgba($color-nba-blue, 0.3);
+  }
+
+  &--green {
+    background: rgba($color-positive, 0.12);
+    color: $color-positive;
+    border: 1px solid rgba($color-positive, 0.25);
+  }
+
+  &--orange {
+    background: rgba($color-warning, 0.12);
+    color: $color-warning;
+    border: 1px solid rgba($color-warning, 0.25);
+  }
+
+  &--red {
+    background: rgba($color-negative, 0.12);
+    color: $color-negative;
+    border: 1px solid rgba($color-negative, 0.25);
+  }
+
+  &--gray {
+    background: rgba($text-secondary, 0.1);
+    color: $text-secondary;
+    border: 1px solid rgba($text-secondary, 0.2);
+  }
+}
+
+// ============================================
+// 空数据占位
+// ============================================
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $space-2xl * 1.5 $space-lg;
+  color: $text-muted;
+
+  .empty-icon {
+    font-size: 56px;
+    margin-bottom: $space-lg;
+    opacity: 0.3;
+  }
+
+  .empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: $text-secondary;
+    margin-bottom: $space-sm;
+  }
+
+  .empty-desc {
+    font-size: 13px;
+    color: $text-muted;
+    text-align: center;
+    max-width: 320px;
+  }
+}
+
+// ============================================
+// 加载状态
+// ============================================
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba($bg-base, 0.75);
+  backdrop-filter: blur(4px);
+  border-radius: inherit;
+  z-index: 10;
+
+  .loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid $border-light;
+    border-top-color: $color-nba-blue;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .loading-text {
+    margin-top: $space-md;
+    font-size: 13px;
+    color: $text-secondary;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// ============================================
+// 页面通用
+// ============================================
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: $text-primary;
+  margin-bottom: $space-lg;
+  letter-spacing: -0.3px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: $space-md;
+  margin-bottom: $space-lg;
+  flex-wrap: wrap;
+}
+
+// ============================================
+// Element Plus 深色覆写
+// ============================================
+
+// 表格
+.el-table {
+  --el-table-bg-color: #{$bg-card};
+  --el-table-tr-bg-color: #{$bg-card};
+  --el-table-header-bg-color: #{$bg-elevated};
+  --el-table-row-hover-bg-color: #{$bg-elevated};
+  --el-table-border-color: #{$border-dark};
+  --el-table-text-color: #{$text-primary};
+  --el-table-header-text-color: #{$text-secondary};
+  --el-table-current-row-bg-color: #{rgba($color-nba-blue, 0.08)};
+  border-radius: $radius-md;
+  overflow: hidden;
+
+  th.el-table__cell {
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td.el-table__cell {
+    font-size: 13px;
+    border-bottom-color: $border-dark;
+  }
+
+  &::before, &::after {
+    display: none;
+  }
+
+  .el-table__inner-wrapper::before {
+    display: none;
+  }
+}
+
+// 分页
+.el-pagination {
+  --el-pagination-bg-color: #{$bg-card};
+  --el-pagination-text-color: #{$text-secondary};
+  --el-pagination-button-bg-color: #{$bg-elevated};
+  --el-pagination-button-color: #{$text-secondary};
+  --el-pagination-hover-color: #{$color-nba-blue};
+
+  .el-pager li {
+    background: $bg-elevated;
+    color: $text-secondary;
+    border-radius: $radius-sm;
+    border: 1px solid $border-dark;
+    margin: 0 2px;
+    box-shadow: $neu-flat;
+
+    &:hover, &.is-active {
+      color: #fff;
+      background: $color-nba-blue;
+      border-color: $color-nba-blue;
+    }
+  }
+
+  button {
+    background: $bg-elevated;
+    border: 1px solid $border-dark;
+    border-radius: $radius-sm;
+    box-shadow: $neu-flat;
+    color: $text-secondary;
+
+    &:hover {
+      color: $color-nba-blue;
+    }
+  }
+}
+
+// 表单
+.el-form-item__label {
+  color: $text-secondary !important;
+  font-size: 13px;
+}
+
+// 输入框
+.el-input__wrapper {
+  background: $bg-elevated !important;
+  box-shadow: $neu-pressed !important;
+  border: 1px solid $border-dark;
+  border-radius: $radius-md !important;
+
+  .el-input__inner {
+    color: $text-primary;
+    &::placeholder { color: $text-muted; }
+  }
+
+  &:hover {
+    border-color: $border-light;
+  }
+
+  &.is-focus {
+    border-color: $color-nba-blue;
+    box-shadow:
+      inset 2px 2px 5px $neu-inset-dark,
+      inset -2px -2px 5px $neu-inset-light,
+      0 0 0 2px rgba($color-nba-blue, 0.15) !important;
+  }
+}
+
+// 选择器
+.el-select {
+  .el-input__wrapper {
+    box-shadow: $neu-pressed !important;
+  }
+}
+
+.el-select-dropdown {
+  background: $bg-elevated;
+  border: 1px solid $border-dark;
+  box-shadow: $neu-raised-lg;
+
+  .el-select-dropdown__item {
+    color: $text-primary;
+
+    &:hover, &.hover {
+      background: rgba($color-nba-blue, 0.1);
+    }
+
+    &.is-selected {
+      color: $color-nba-blue;
+      font-weight: 600;
+    }
+  }
+}
+
+// 单选按钮组
+.el-radio-group {
+  .el-radio-button__inner {
+    background: $bg-elevated;
+    color: $text-secondary;
+    border-color: $border-dark;
+    box-shadow: $neu-flat;
+
+    &:hover {
+      color: $text-primary;
+    }
+  }
+
+  .el-radio-button__original-radio:checked + .el-radio-button__inner {
+    background: $color-nba-blue;
+    border-color: $color-nba-blue;
+    color: #fff;
+    box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// 开关
+.el-switch {
+  --el-switch-on-color: #{$color-nba-blue};
+  --el-switch-off-color: #{$border-light};
+}
+
+// 卡片 (Element Plus)
+.el-card {
+  --el-card-bg-color: #{$bg-card};
+  --el-card-border-color: #{$border-dark};
+  border-radius: $radius-lg !important;
+  box-shadow: $neu-raised !important;
+  border: 1px solid $border-dark !important;
+  transition: box-shadow $transition-normal, transform $transition-normal;
+
+  &:hover {
+    box-shadow: $neu-raised-lg !important;
+    transform: translateY(-2px);
+  }
+
+  .el-card__header {
+    border-bottom-color: $border-dark;
+    padding: $space-md $space-lg;
+    font-weight: 600;
+    color: $text-primary;
+  }
+
+  .el-card__body {
+    padding: $space-lg;
+  }
+}
+
+// 描述列表
+.el-descriptions {
+  --el-descriptions-item-bordered-label-background: #{$bg-elevated};
+}
+
+.el-descriptions__label {
+  color: $text-secondary !important;
+  background: $bg-elevated !important;
+  border-color: $border-dark !important;
+}
+
+.el-descriptions__content {
+  color: $text-primary !important;
+  background: $bg-card !important;
+  border-color: $border-dark !important;
+}
+
+// 消息提示
+.el-message {
+  background: $bg-elevated;
+  border: 1px solid $border-dark;
+  box-shadow: $neu-raised;
+
+  .el-message__content {
+    color: $text-primary;
+  }
+}
+
+// 对话框
+.el-dialog {
+  --el-dialog-bg-color: #{$bg-surface};
+  border-radius: $radius-xl !important;
+  box-shadow: $neu-raised-lg;
+  border: 1px solid $border-dark;
+
+  .el-dialog__header {
+    border-bottom: 1px solid $border-dark;
+  }
+
+  .el-dialog__title {
+    color: $text-primary;
+  }
+}
+
+// 日期选择器
+.el-date-editor {
+  .el-input__wrapper {
+    box-shadow: $neu-pressed !important;
+  }
+}
+
+.el-popper, .el-picker-panel {
+  background: $bg-elevated;
+  border: 1px solid $border-dark;
+  box-shadow: $neu-raised-lg;
+}
+
+// Tag
+.el-tag {
+  border-radius: $radius-full;
+}
+
+// Loading
+.el-loading-mask {
+  background: rgba($bg-base, 0.75);
+  backdrop-filter: blur(4px);
+
+  .el-loading-text {
+    color: $text-secondary;
+  }
+
+  .circular .path {
+    stroke: $color-nba-blue;
+  }
+}
+
+// slider
+.el-slider {
+  --el-slider-main-bg-color: #{$color-nba-blue};
+  --el-slider-runway-bg-color: #{$border-light};
+}
+
+// ============================================
+// 图表容器
+// ============================================
+
+.chart-container {
+  width: 100%;
+  height: 300px;
+  min-height: 200px;
+}
+
+.chart-container--sm { height: 200px; }
+.chart-container--lg { height: 400px; }
+
+// ============================================
+// 动画
+// ============================================
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out both;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.4s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.4s ease-out both;
+}
+
+// stagger children
+@for $i from 1 through 12 {
+  .stagger-#{$i} {
+    animation-delay: #{$i * 60}ms;
+  }
+}
+
+// ============================================
+// 滚动条
+// ============================================
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: $bg-base;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $border-light;
+  border-radius: 3px;
+
+  &:hover {
+    background: $text-muted;
+  }
+}
+
+// ============================================
+// 响应式
+// ============================================
+
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 $space-lg;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $space-lg;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-lg;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $space-lg;
+}
+
+@media (max-width: $breakpoint-xl) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: $breakpoint-lg) {
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+}
