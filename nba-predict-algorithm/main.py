@@ -47,7 +47,7 @@ def _check_data_freshness():
     def _bg_update():
         try:
             from scripts.daily_update import run
-            run(skip_retrain=True)
+            run()
         except Exception as e:
             logger.error(f"后台更新失败: {e}")
 
