@@ -2,32 +2,32 @@
 Pydantic模型定义
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import date
 
 
 class PlayerPredictRequest(BaseModel):
     """球员预测请求"""
-    player_id: int = Field(..., description="球员ID")
-    opponent_player_id: Optional[int] = Field(None, description="对位球员ID")
-    scene: str = Field(default="常规赛", description="比赛场景(常规赛/季后赛/关键战)")
-    home_away: str = Field(default="home", description="主客场(home/away)")
+    player_id: int = Field(..., gt=0, description="球员ID")
+    opponent_player_id: Optional[int] = Field(None, gt=0, description="对位球员ID")
+    scene: str = Field(default="常规赛", pattern="^(常规赛|季后赛|关键战)$", description="比赛场景")
+    home_away: str = Field(default="home", pattern="^(home|away)$", description="主客场")
 
 
 class TeamPredictRequest(BaseModel):
     """球队预测请求"""
-    home_team_id: int = Field(..., description="主队ID")
-    away_team_id: int = Field(..., description="客队ID")
-    scene: str = Field(default="常规赛", description="比赛场景")
+    home_team_id: int = Field(..., gt=0, description="主队ID")
+    away_team_id: int = Field(..., gt=0, description="客队ID")
+    scene: str = Field(default="常规赛", pattern="^(常规赛|季后赛|关键战)$", description="比赛场景")
     use_odds: bool = Field(default=False, description="是否使用赔率融合")
 
 
 class OddsCalculateRequest(BaseModel):
     """赔率计算请求"""
-    home_win_odds: float = Field(..., description="主胜赔率")
-    away_win_odds: float = Field(..., description="客胜赔率")
+    home_win_odds: float = Field(..., gt=1.0, description="主胜赔率(>1.0)")
+    away_win_odds: float = Field(..., gt=1.0, description="客胜赔率(>1.0)")
     handicap_line: Optional[float] = Field(None, description="让分盘口")
-    total_line: Optional[float] = Field(None, description="大小分盘口")
+    total_line: Optional[float] = Field(None, gt=0, description="大小分盘口")
 
 
 class PlayerPredictResponse(BaseModel):

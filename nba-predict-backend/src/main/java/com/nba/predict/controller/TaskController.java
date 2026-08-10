@@ -1,13 +1,12 @@
 package com.nba.predict.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nba.predict.common.PageResult;
 import com.nba.predict.common.Result;
 import com.nba.predict.entity.ScheduleTaskLog;
-import com.nba.predict.mapper.ScheduleTaskLogMapper;
 import com.nba.predict.scheduler.DataUpdateTask;
 import com.nba.predict.scheduler.OptimizationTask;
+import com.nba.predict.service.TaskLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class TaskController {
 
-    private final ScheduleTaskLogMapper taskLogMapper;
+    private final TaskLogService taskLogService;
     private final DataUpdateTask dataUpdateTask;
     private final OptimizationTask optimizationTask;
 
@@ -30,16 +29,7 @@ public class TaskController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String taskName,
             @RequestParam(required = false) String status) {
-        Page<ScheduleTaskLog> pageParam = new Page<>(page, size);
-        LambdaQueryWrapper<ScheduleTaskLog> wrapper = new LambdaQueryWrapper<>();
-        if (taskName != null) {
-            wrapper.eq(ScheduleTaskLog::getTaskName, taskName);
-        }
-        if (status != null) {
-            wrapper.eq(ScheduleTaskLog::getExecuteStatus, status);
-        }
-        wrapper.orderByDesc(ScheduleTaskLog::getExecuteTime);
-        Page<ScheduleTaskLog> result = taskLogMapper.selectPage(pageParam, wrapper);
+        var result = taskLogService.listLogs(page, size, taskName, status);
         return Result.success(PageResult.of(result.getTotal(), page, size, result.getRecords()));
     }
 

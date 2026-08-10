@@ -6,6 +6,7 @@ from loguru import logger
 
 from app.models.schemas import TeamPredictRequest, TeamPredictResponse
 from app.services.team_service import TeamService
+from scripts.compute_player_impact import compute_season
 
 router = APIRouter()
 team_service = TeamService()
@@ -77,7 +78,6 @@ async def refresh_player_impact(season: str = "2025-26"):
     """
     logger.info(f"手动刷新球员影响力: {season}")
     try:
-        from scripts.compute_player_impact import compute_season
         compute_season(season)
         return {"status": "success", "message": f"球员影响力已更新 ({season})"}
     except Exception as e:

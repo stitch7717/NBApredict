@@ -7,6 +7,7 @@ from typing import List
 
 from app.models.schemas import PlayerPredictRequest, PlayerPredictResponse
 from app.services.player_service import PlayerService
+from scripts.fetch_injury_report import run as injury_run
 
 router = APIRouter()
 player_service = PlayerService()
@@ -58,7 +59,6 @@ async def refresh_injury_report():
     """
     logger.info("手动刷新伤病报告")
     try:
-        from scripts.fetch_injury_report import run as injury_run
         injury_run()
         return {"status": "success", "message": "伤病报告已更新"}
     except Exception as e:

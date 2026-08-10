@@ -39,6 +39,7 @@ class TeamService:
         self.config_dao = ConfigDAO()
 
     def predict(self, request: TeamPredictRequest) -> TeamPredictResponse:
+        """预测球队对战结果"""
         home_team = self.team_dao.get_team(request.home_team_id)
         away_team = self.team_dao.get_team(request.away_team_id)
         if not home_team or not away_team:
@@ -50,7 +51,44 @@ class TeamService:
         if not home_data or not away_data:
             return self._fallback_response(request, "无赛季数据")
 
-        # 尝试使用 Ridge 回归模型
+        # 核心预测（Ridge回归 或 手调系数）
+        predict_home, predict_away, predict_total, predict_diff, coefficients, style_matchup = \
+            self._core_predict(home_data, away_data, request)
+
+        # 伤病影响调整
+        predict_home, predict_away, predict_total, predict_diff, coefficients = \
+            self._apply_injury_adjustments(
+                predict_home, predict_away, predict_total, predict_diff,
+                coefficients, request.home_team_id, request.away_team_id
+            )
+
+        # 赔率融合
+        resp_home_odds, resp_away_odds, resp_total_odds, resp_diff_odds = \
+            self._apply_odds_fusion(request, home_data, away_data,
+                                     predict_home, predict_away, predict_total, predict_diff)
+
+        coefficients["odds_weight"] = 0.20 if request.use_odds else 0
+
+        return TeamPredictResponse(
+            home_team_id=request.home_team_id,
+            home_team_name=home_team.team_name,
+            away_team_id=request.away_team_id,
+            away_team_name=away_team.team_name,
+            scene=request.scene,
+            predict_home_score=predict_home,
+            predict_away_score=predict_away,
+            predict_total_score=predict_total,
+            predict_score_diff=predict_diff,
+            predict_home_score_odds=resp_home_odds,
+            predict_away_score_odds=resp_away_odds,
+            predict_total_score_odds=resp_total_odds,
+            predict_score_diff_odds=resp_diff_odds,
+            coefficients=coefficients,
+            style_matchup=style_matchup,
+        )
+
+    def _core_predict(self, home_data, away_data, request) -> tuple:
+        """核心预测逻辑：优先 Ridge 回归，降级到手调系数"""
         ridge = _load_ridge_model()
         if ridge:
             predict_home, predict_away = self._predict_ridge(
@@ -59,7 +97,6 @@ class TeamService:
             coefficients = {"model": "ridge_v1"}
             style_matchup = self._calc_style_matchup_simple(home_data, away_data)
         else:
-            # 降级: 手调系数
             home_strength_c = self._calc_strength_coeff(home_data)
             away_strength_c = self._calc_strength_coeff(away_data)
             home_c = self._calc_home_coeff(home_data)
@@ -89,10 +126,13 @@ class TeamService:
 
         predict_total = predict_home + predict_away
         predict_diff = predict_home - predict_away
+        return predict_home, predict_away, predict_total, predict_diff, coefficients, style_matchup
 
-        # 伤病影响调整
-        home_injury = self._calc_injury_impact(request.home_team_id)
-        away_injury = self._calc_injury_impact(request.away_team_id)
+    def _apply_injury_adjustments(self, predict_home, predict_away, predict_total,
+                                   predict_diff, coefficients, home_id, away_id) -> tuple:
+        """应用伤病影响调整"""
+        home_injury = self._calc_injury_impact(home_id)
+        away_injury = self._calc_injury_impact(away_id)
 
         has_injury = (
             home_injury["off_penalty"] > 0 or away_injury["off_penalty"] > 0
@@ -100,82 +140,71 @@ class TeamService:
             or away_injury.get("chemistry_penalty", 0) > 0
         )
 
-        if has_injury:
-            # 进攻惩罚: 得分降低
-            # 防守惩罚: 对手得分升高
-            # 化学反应惩罚: 整体配合效率下降 (两端都受影响)
-            h_chem = home_injury.get("chemistry_penalty", 0)
-            a_chem = away_injury.get("chemistry_penalty", 0)
+        if not has_injury:
+            return predict_home, predict_away, predict_total, predict_diff, coefficients
 
-            injury_home = (
-                predict_home * (1 - home_injury["off_penalty"] - h_chem)
-                + predict_home * away_injury["def_penalty"]
-            )
-            injury_away = (
-                predict_away * (1 - away_injury["off_penalty"] - a_chem)
-                + predict_away * home_injury["def_penalty"]
-            )
+        h_chem = home_injury.get("chemistry_penalty", 0)
+        a_chem = away_injury.get("chemistry_penalty", 0)
 
-            predict_home = round(injury_home)
-            predict_away = round(injury_away)
-            predict_total = predict_home + predict_away
-            predict_diff = predict_home - predict_away
+        injury_home = (
+            predict_home * (1 - home_injury["off_penalty"] - h_chem)
+            + predict_home * away_injury["def_penalty"]
+        )
+        injury_away = (
+            predict_away * (1 - away_injury["off_penalty"] - a_chem)
+            + predict_away * home_injury["def_penalty"]
+        )
 
-            coefficients["home_injury_off_penalty"] = home_injury["off_penalty"]
-            coefficients["home_injury_def_penalty"] = home_injury["def_penalty"]
-            coefficients["home_chemistry_penalty"] = h_chem
-            coefficients["away_injury_off_penalty"] = away_injury["off_penalty"]
-            coefficients["away_injury_def_penalty"] = away_injury["def_penalty"]
-            coefficients["away_chemistry_penalty"] = a_chem
-            coefficients["injury_details"] = {
-                "home": home_injury["details"],
-                "away": away_injury["details"],
-            }
+        predict_home = round(injury_home)
+        predict_away = round(injury_away)
+        predict_total = predict_home + predict_away
+        predict_diff = predict_home - predict_away
 
+        coefficients["home_injury_off_penalty"] = home_injury["off_penalty"]
+        coefficients["home_injury_def_penalty"] = home_injury["def_penalty"]
+        coefficients["home_chemistry_penalty"] = h_chem
+        coefficients["away_injury_off_penalty"] = away_injury["off_penalty"]
+        coefficients["away_injury_def_penalty"] = away_injury["def_penalty"]
+        coefficients["away_chemistry_penalty"] = a_chem
+        coefficients["injury_details"] = {
+            "home": home_injury["details"],
+            "away": away_injury["details"],
+        }
+        return predict_home, predict_away, predict_total, predict_diff, coefficients
+
+    def _apply_odds_fusion(self, request, home_data, away_data,
+                            predict_home, predict_away, predict_total, predict_diff) -> tuple:
+        """应用赔率融合"""
         resp_home_odds = None
         resp_away_odds = None
         resp_total_odds = None
         resp_diff_odds = None
 
-        if request.use_odds:
-            odds = self.team_dao.get_latest_odds(request.home_team_id, request.away_team_id)
-            if odds:
-                coeffs = self.config_dao.get_coefficients()
-                odds_weight = coeffs.get("odds_weight", 0.20)
+        if not request.use_odds:
+            return resp_home_odds, resp_away_odds, resp_total_odds, resp_diff_odds
 
-                if odds.home_win_prob and odds.away_win_prob:
-                    base_home = home_data.points_per_game or 110.0
-                    base_away = away_data.points_per_game or 108.0
-                    odds_home = round(base_home * (1.0 + (odds.home_win_prob - 0.5) * 0.2))
-                    odds_away = round(base_away * (1.0 + (odds.away_win_prob - 0.5) * 0.2))
-                    resp_home_odds = round(predict_home * (1 - odds_weight) + odds_home * odds_weight)
-                    resp_away_odds = round(predict_away * (1 - odds_weight) + odds_away * odds_weight)
-                    resp_total_odds = resp_home_odds + resp_away_odds
-                    resp_diff_odds = resp_home_odds - resp_away_odds
+        odds = self.team_dao.get_latest_odds(request.home_team_id, request.away_team_id)
+        if not odds:
+            return resp_home_odds, resp_away_odds, resp_total_odds, resp_diff_odds
 
-                if odds.total_line:
-                    resp_total_odds = round(predict_total * (1 - odds_weight) + odds.total_line * odds_weight)
-                    resp_diff_odds = round(predict_diff * (1 - odds_weight) + (odds.handicap_line or predict_diff) * odds_weight)
+        coeffs = self.config_dao.get_coefficients()
+        odds_weight = coeffs.get("odds_weight", 0.20)
 
-        coefficients["odds_weight"] = 0.20 if request.use_odds else 0
+        if odds.home_win_prob and odds.away_win_prob:
+            base_home = home_data.points_per_game or 110.0
+            base_away = away_data.points_per_game or 108.0
+            odds_home = round(base_home * (1.0 + (odds.home_win_prob - 0.5) * 0.2))
+            odds_away = round(base_away * (1.0 + (odds.away_win_prob - 0.5) * 0.2))
+            resp_home_odds = round(predict_home * (1 - odds_weight) + odds_home * odds_weight)
+            resp_away_odds = round(predict_away * (1 - odds_weight) + odds_away * odds_weight)
+            resp_total_odds = resp_home_odds + resp_away_odds
+            resp_diff_odds = resp_home_odds - resp_away_odds
 
-        return TeamPredictResponse(
-            home_team_id=request.home_team_id,
-            home_team_name=home_team.team_name,
-            away_team_id=request.away_team_id,
-            away_team_name=away_team.team_name,
-            scene=request.scene,
-            predict_home_score=predict_home,
-            predict_away_score=predict_away,
-            predict_total_score=predict_total,
-            predict_score_diff=predict_diff,
-            predict_home_score_odds=resp_home_odds,
-            predict_away_score_odds=resp_away_odds,
-            predict_total_score_odds=resp_total_odds,
-            predict_score_diff_odds=resp_diff_odds,
-            coefficients=coefficients,
-            style_matchup=style_matchup,
-        )
+        if odds.total_line:
+            resp_total_odds = round(predict_total * (1 - odds_weight) + odds.total_line * odds_weight)
+            resp_diff_odds = round(predict_diff * (1 - odds_weight) + (odds.handicap_line or predict_diff) * odds_weight)
+
+        return resp_home_odds, resp_away_odds, resp_total_odds, resp_diff_odds
 
     def _predict_ridge(self, home_data, away_data, scene: str, ridge: dict) -> tuple:
         """用 Ridge 回归模型预测 (v2: 使用真实高阶数据)"""

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * 全局异常处理器
  */
 @Slf4j
-@RestControllerAdvice(basePackages = "com.nba.predict.controller")
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
