@@ -68,6 +68,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { SEASONS } from '@/constants'
 import { configApi, oddsApi } from '@/api'
 
 const coeffItems = [
@@ -101,6 +102,7 @@ const switchForm = reactive({
 })
 
 const oddsWeight = ref(20)
+const availableSeasons = SEASONS
 const sources = ref([])
 
 onMounted(() => { loadConfig(); loadSources() })

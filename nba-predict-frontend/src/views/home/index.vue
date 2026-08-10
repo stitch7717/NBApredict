@@ -18,7 +18,7 @@
     <!-- 核心统计卡片 -->
     <div class="grid-4 animate-fade-in stagger-1">
       <div class="stat-card neu-card neu-card--blue">
-        <div class="stat-card-icon" style="background:rgba(29,66,138,0.15)">
+        <div class="stat-card-icon">
           <el-icon :size="24"><User /></el-icon>
         </div>
         <div class="stat-card-body">
@@ -29,7 +29,7 @@
       </div>
 
       <div class="stat-card neu-card neu-card--green">
-        <div class="stat-card-icon" style="background:rgba(168,193,182,0.15)">
+        <div class="stat-card-icon">
           <el-icon :size="24"><Trophy /></el-icon>
         </div>
         <div class="stat-card-body">
@@ -40,7 +40,7 @@
       </div>
 
       <div class="stat-card neu-card neu-card--orange">
-        <div class="stat-card-icon" style="background:rgba(230,167,98,0.15)">
+        <div class="stat-card-icon">
           <el-icon :size="24"><DataAnalysis /></el-icon>
         </div>
         <div class="stat-card-body">
@@ -51,7 +51,7 @@
       </div>
 
       <div class="stat-card neu-card neu-card--beige">
-        <div class="stat-card-icon" style="background:rgba(217,199,184,0.15)">
+        <div class="stat-card-icon">
           <el-icon :size="24"><Connection /></el-icon>
         </div>
         <div class="stat-card-body">
@@ -290,6 +290,11 @@ const loadStarPlayers = async () => {
   justify-content: center;
   flex-shrink: 0;
   color: $text-primary;
+
+  .stat-card.neu-card--blue & { background: rgba(29,66,138,0.15); }
+  .stat-card.neu-card--green & { background: rgba(168,193,182,0.15); }
+  .stat-card.neu-card--orange & { background: rgba(230,167,98,0.15); }
+  .stat-card.neu-card--beige & { background: rgba(217,199,184,0.15); }
 }
 
 .stat-card-body {
