@@ -126,44 +126,67 @@ async def get_players(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
-    with SessionLocal() as db:
-        query = db.query(Player, PlayerData).join(
-            PlayerData, Player.player_id == PlayerData.player_id
-        ).filter(
-            PlayerData.season == season,
-            Player.status == 1,
-        )
+    from loguru import logger
+    try:
+        valid_sort_fields = [
+            "points_per_game", "rebounds_per_game", "assists_per_game",
+            "steals_per_game", "blocks_per_game", "turnovers_per_game",
+            "minutes_per_game", "fg_percentage", "three_percentage",
+            "ft_percentage", "per", "true_shooting_pct", "usage_rate",
+        ]
+        if sort_by not in valid_sort_fields:
+            sort_by = "points_per_game"
+        if order not in ("asc", "desc"):
+            order = "desc"
 
-        # 排序
-        sort_col = getattr(PlayerData, sort_by, PlayerData.points_per_game)
-        if order == "desc":
-            query = query.order_by(sort_col.desc())
-        else:
-            query = query.order_by(sort_col.asc())
+        with SessionLocal() as db:
+            query = db.query(Player, PlayerData).join(
+                PlayerData, Player.player_id == PlayerData.player_id
+            ).filter(
+                PlayerData.season == season,
+                Player.status == 1,
+            )
 
-        total = query.count()
-        items = query.offset((page - 1) * limit).limit(limit).all()
+            sort_col = getattr(PlayerData, sort_by, PlayerData.points_per_game)
+            if order == "desc":
+                query = query.order_by(sort_col.desc())
+            else:
+                query = query.order_by(sort_col.asc())
 
-        return {
-            "total": total,
-            "page": page,
-            "limit": limit,
-            "items": [
-                {
-                    "player_id": p.player_id,
-                    "player_name": p.player_name,
-                    "player_name_en": p.player_name_en,
-                    "position": p.position,
-                    "jersey_number": p.jersey_number,
-                    "team_id": p.team_id,
-                    "age": p.age,
-                    "player_role": p.player_role,
-                    "impact_score": p.impact_score,
-                    **_player_data_dict(pd),
-                }
-                for p, pd in items
-            ],
-        }
+            total = query.count()
+            # 重建查询避免 count() 修改原查询
+            query2 = db.query(Player, PlayerData).join(
+                PlayerData, Player.player_id == PlayerData.player_id
+            ).filter(
+                PlayerData.season == season,
+                Player.status == 1,
+            )
+            query2 = query2.order_by(sort_col.desc() if order == "desc" else sort_col.asc())
+            items = query2.offset((page - 1) * limit).limit(limit).all()
+
+            return {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "items": [
+                    {
+                        "player_id": p.player_id,
+                        "player_name": p.player_name,
+                        "player_name_en": p.player_name_en,
+                        "position": p.position,
+                        "jersey_number": p.jersey_number,
+                        "team_id": p.team_id,
+                        "age": p.age,
+                        "player_role": p.player_role,
+                        "impact_score": p.impact_score,
+                        **_player_data_dict(pd),
+                    }
+                    for p, pd in items
+                ],
+            }
+    except Exception as e:
+        logger.exception(f"球员列表查询失败: {e}")
+        return {"total": 0, "page": page, "limit": limit, "items": [], "error": str(e)}
 
 
 @router.get("/players/{player_id}", summary="球员详情")
