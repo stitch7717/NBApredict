@@ -105,7 +105,12 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
+import * as echarts from 'echarts/core'
+import { RadarChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+
+echarts.use([RadarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 import { datasourceApi, oddsApi } from '@/api'
 import { Download, DataAnalysis } from '@element-plus/icons-vue'
 

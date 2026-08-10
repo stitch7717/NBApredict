@@ -13,14 +13,16 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class HttpUtil {
 
     private final AlgorithmConfig algorithmConfig;
     private final ObjectMapper objectMapper;
+    private final OkHttpClient httpClient;
 
-    private OkHttpClient getClient() {
-        return new OkHttpClient.Builder()
+    public HttpUtil(AlgorithmConfig algorithmConfig, ObjectMapper objectMapper) {
+        this.algorithmConfig = algorithmConfig;
+        this.objectMapper = objectMapper;
+        this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(algorithmConfig.getConnectTimeout(), TimeUnit.MILLISECONDS)
                 .readTimeout(algorithmConfig.getReadTimeout(), TimeUnit.MILLISECONDS)
                 .writeTimeout(10, TimeUnit.SECONDS)
@@ -76,8 +78,7 @@ public class HttpUtil {
         IOException lastException = null;
 
         for (int i = 0; i <= maxRetry; i++) {
-            try {
-                Response response = getClient().newCall(request).execute();
+            try (Response response = httpClient.newCall(request).execute()) {
                 if (response.isSuccessful() && response.body() != null) {
                     return response.body().string();
                 }

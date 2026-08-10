@@ -15,12 +15,15 @@ router = APIRouter()
 async def get_teams(season: str = "2025-26"):
     with SessionLocal() as db:
         teams = db.query(Team).filter(Team.status == 1).all()
+        team_ids = [t.team_id for t in teams]
+        team_data_list = db.query(TeamData).filter(
+            TeamData.team_id.in_(team_ids),
+            TeamData.season == season,
+        ).all()
+        team_data_map = {td.team_id: td for td in team_data_list}
         result = []
         for t in teams:
-            td = db.query(TeamData).filter(
-                TeamData.team_id == t.team_id,
-                TeamData.season == season,
-            ).first()
+            td = team_data_map.get(t.team_id)
             result.append({
                 "team_id": t.team_id,
                 "team_name": t.team_name,
@@ -88,12 +91,16 @@ async def get_team_roster(team_id: int, season: str = "2025-26"):
             Player.status == 1,
         ).all()
 
+        player_ids = [p.player_id for p in players]
+        player_data_list = db.query(PlayerData).filter(
+            PlayerData.player_id.in_(player_ids),
+            PlayerData.season == season,
+        ).all() if player_ids else []
+        player_data_map = {pd.player_id: pd for pd in player_data_list}
+
         result = []
         for p in players:
-            pd = db.query(PlayerData).filter(
-                PlayerData.player_id == p.player_id,
-                PlayerData.season == season,
-            ).first()
+            pd = player_data_map.get(p.player_id)
             result.append({
                 "player_id": p.player_id,
                 "player_name": p.player_name,
