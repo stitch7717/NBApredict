@@ -77,8 +77,8 @@ class TeamService:
 
         coefficients["odds_weight"] = 0.20 if request.use_odds else 0
 
-        # 计算胜率
-        home_win_prob = self._calc_win_probability(home_data, away_data)
+        # 胜率直接从预测分差推导（与比分预测一致）
+        home_win_prob = self._calc_win_probability(predict_diff)
 
         return TeamPredictResponse(
             home_team_id=request.home_team_id,
@@ -529,28 +529,10 @@ class TeamService:
         """比赛场景系数"""
         return 1.08 if scene == "季后赛" else 1.0
 
-    def _calc_win_probability(self, home_data, away_data) -> float:
-        """基于攻防效率差 + 胜率差 + 主场优势计算胜率"""
+    def _calc_win_probability(self, predict_diff: int) -> float:
+        """从预测分差推导胜率：分差越大胜率越高"""
         import math
-
-        def _team_net(data):
-            """获取球队净效率，优先用 rating，降级用 PPG 差值"""
-            off = getattr(data, 'offensive_rating', 0) or 0
-            df = getattr(data, 'defensive_rating', 0) or 0
-            if off > 50 and df > 50:
-                return off - df
-            # 兜底：PPG - opponent_pts 作为近似净效率
-            ppg = getattr(data, 'points_per_game', 0) or 0
-            opp = getattr(data, 'opponent_points', 0) or 0
-            return ppg - opp if ppg > 50 else 0
-
-        h_net = _team_net(home_data)
-        a_net = _team_net(away_data)
-        h_wp = float(getattr(home_data, 'win_percentage', 0.5) or 0.5)
-        a_wp = float(getattr(away_data, 'win_percentage', 0.5) or 0.5)
-        wp_factor = (h_wp - a_wp) * 40.0
-        rating_diff = (h_net - a_net) + wp_factor + 2.5
-        return 1.0 / (1.0 + math.exp(-rating_diff / 12.0))
+        return 1.0 / (1.0 + math.exp(-predict_diff / 7.0))
 
     def get_team_rating(self, team_id: int) -> dict:
         """获取球队实力评分"""
