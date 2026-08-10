@@ -3,6 +3,7 @@ package com.nba.predict.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nba.predict.common.PageResult;
 import com.nba.predict.common.Result;
+import com.nba.predict.dto.TeamPredictRequest;
 import com.nba.predict.entity.Team;
 import com.nba.predict.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,10 +43,10 @@ public class TeamController {
 
     @Operation(summary = "球队对战预测")
     @PostMapping("/predict")
-    public Result<Object> predict(@RequestParam Long homeTeamId,
-                                  @RequestParam Long awayTeamId,
-                                  @RequestParam(defaultValue = "常规赛") String scene,
-                                  @RequestParam(defaultValue = "false") boolean useOdds) {
-        return Result.success(teamService.predict(homeTeamId, awayTeamId, scene, useOdds));
+    public Result<Object> predict(@RequestBody TeamPredictRequest request) {
+        return Result.success(teamService.predict(
+                request.homeTeamId(), request.awayTeamId(),
+                request.scene() != null ? request.scene() : "常规赛",
+                request.useOdds() != null && request.useOdds()));
     }
 }

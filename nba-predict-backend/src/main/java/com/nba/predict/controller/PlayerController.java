@@ -3,6 +3,7 @@ package com.nba.predict.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nba.predict.common.PageResult;
 import com.nba.predict.common.Result;
+import com.nba.predict.dto.PlayerPredictRequest;
 import com.nba.predict.entity.Player;
 import com.nba.predict.service.PlayerService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,10 +43,10 @@ public class PlayerController {
 
     @Operation(summary = "球员预测")
     @PostMapping("/predict")
-    public Result<Object> predict(@RequestParam Long playerId,
-                                  @RequestParam(required = false) Long opponentPlayerId,
-                                  @RequestParam(defaultValue = "常规赛") String scene,
-                                  @RequestParam(defaultValue = "home") String homeAway) {
-        return Result.success(playerService.predict(playerId, opponentPlayerId, scene, homeAway));
+    public Result<Object> predict(@RequestBody PlayerPredictRequest request) {
+        return Result.success(playerService.predict(
+                request.playerId(), request.opponentPlayerId(),
+                request.scene() != null ? request.scene() : "常规赛",
+                request.homeAway() != null ? request.homeAway() : "home"));
     }
 }
