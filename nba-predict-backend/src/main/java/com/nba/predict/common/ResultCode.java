@@ -30,6 +30,7 @@ public enum ResultCode {
     ODDS_SOURCE_NOT_FOUND(1004, "数据源不存在"),
     PREDICT_FAILED(1005, "预测计算失败"),
     DATA_NOT_FOUND(1006, "数据不存在"),
+    STAR_NOT_FOUND(1007, "系列赛之星不存在"),
 
     // 算法层错误 2xxx
     ALGORITHM_ERROR(2001, "算法调用失败"),
