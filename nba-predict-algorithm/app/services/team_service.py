@@ -54,6 +54,14 @@ class TeamService:
         # 核心预测（Ridge回归 或 手调系数）
         predict_home, predict_away, predict_total, predict_diff, coefficients, style_matchup = \
             self._core_predict(home_data, away_data, request)
+        logger.info(f"[预测诊断] {home_team.team_name}(主) vs {away_team.team_name}(客): "
+                    f"主={predict_home} 客={predict_away} 分差={predict_diff} "
+                    f"主队 net={getattr(home_data, 'net_rating', '?')} "
+                    f"off={getattr(home_data, 'offensive_rating', '?')} "
+                    f"def={getattr(home_data, 'defensive_rating', '?')} "
+                    f"客队 net={getattr(away_data, 'net_rating', '?')} "
+                    f"off={getattr(away_data, 'offensive_rating', '?')} "
+                    f"def={getattr(away_data, 'defensive_rating', '?')}")
 
         # 伤病影响调整
         predict_home, predict_away, predict_total, predict_diff, coefficients = \
