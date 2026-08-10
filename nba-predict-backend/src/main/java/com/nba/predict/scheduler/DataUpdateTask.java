@@ -3,7 +3,6 @@ package com.nba.predict.scheduler;
 import com.nba.predict.entity.ScheduleTaskLog;
 import com.nba.predict.mapper.ScheduleTaskLogMapper;
 import com.nba.predict.util.HttpUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,7 +18,6 @@ import java.util.Map;
 public class DataUpdateTask {
 
     private final HttpUtil httpUtil;
-    private final ObjectMapper objectMapper;
     private final ScheduleTaskLogMapper taskLogMapper;
 
     /**

@@ -1,6 +1,7 @@
 """
 NBA预测系统 - 算法层入口
 """
+import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -91,10 +92,11 @@ async def health_check():
     return {"status": "healthy", "service": "nba-predict-algorithm"}
 
 if __name__ == "__main__":
+    is_dev = os.getenv("ENV", "dev") == "dev"
     uvicorn.run(
         "main:app",
         host=API_HOST,
         port=API_PORT,
-        reload=True,
+        reload=is_dev,
         log_level="info",
     )

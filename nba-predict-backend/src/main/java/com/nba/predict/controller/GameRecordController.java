@@ -7,8 +7,11 @@ import com.nba.predict.entity.GameRecord;
 import com.nba.predict.service.GameRecordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -17,6 +20,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/game")
 @RequiredArgsConstructor
+@Validated
 public class GameRecordController {
 
     private final GameRecordService gameRecordService;
@@ -24,8 +28,8 @@ public class GameRecordController {
     @Operation(summary = "比赛列表")
     @GetMapping("/list")
     public Result<PageResult<GameRecord>> list(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String season,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate gameDate,
             @RequestParam(required = false) Long teamId) {

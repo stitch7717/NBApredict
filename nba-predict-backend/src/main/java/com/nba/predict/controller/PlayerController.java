@@ -7,13 +7,17 @@ import com.nba.predict.entity.Player;
 import com.nba.predict.service.PlayerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "球员接口")
 @RestController
 @RequestMapping("/player")
 @RequiredArgsConstructor
+@Validated
 public class PlayerController {
 
     private final PlayerService playerService;
@@ -21,8 +25,8 @@ public class PlayerController {
     @Operation(summary = "球员列表")
     @GetMapping("/list")
     public Result<PageResult<Player>> list(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String position,
             @RequestParam(required = false) Integer teamId) {
