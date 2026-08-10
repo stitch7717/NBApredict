@@ -94,24 +94,24 @@
           <div class="neu-card">
             <div class="neu-card-header">
               <span class="title">胜率预测</span>
-              <span class="neu-tag" :class="result.homeWinProb >= 0.5 ? 'neu-tag--blue' : 'neu-tag--red'">
-                {{ result.homeWinProb >= 0.5 ? '主队占优' : '客队占优' }}
+              <span class="neu-tag" :class="(result.homeWinProb ?? result.home_win_prob ?? 0) >= 0.5 ? 'neu-tag--blue' : 'neu-tag--red'">
+                {{ (result.homeWinProb ?? result.home_win_prob ?? 0) >= 0.5 ? '主队占优' : '客队占优' }}
               </span>
             </div>
             <div class="prob-row">
               <span class="prob-label prob-label--home">{{ homeTeamName }}</span>
               <el-progress
-                :percentage="Math.round(result.homeWinProb * 100)"
+                :percentage="Math.round((result.homeWinProb ?? result.home_win_prob ?? 0) * 100)"
                 :stroke-width="18"
                 class="prob-bar"
               >
-                <span class="prob-text">{{ (result.homeWinProb * 100).toFixed(1) }}%</span>
+                <span class="prob-text">{{ ((result.homeWinProb ?? result.home_win_prob ?? 0) * 100).toFixed(1) }}%</span>
               </el-progress>
               <span class="prob-label prob-label--away">{{ awayTeamName }}</span>
             </div>
             <div class="prob-row" style="margin-top: 4px">
-              <span class="prob-sub">{{ (result.homeWinProb * 100).toFixed(1) }}%</span>
-              <span class="prob-sub" style="text-align: right">{{ ((1 - result.homeWinProb) * 100).toFixed(1) }}%</span>
+              <span class="prob-sub">{{ ((result.homeWinProb ?? result.home_win_prob ?? 0) * 100).toFixed(1) }}%</span>
+              <span class="prob-sub" style="text-align: right">{{ ((1 - (result.homeWinProb ?? result.home_win_prob ?? 0)) * 100).toFixed(1) }}%</span>
             </div>
           </div>
 
@@ -123,37 +123,37 @@
             <div class="score-display">
               <div class="team-score team-score--home">
                 <div class="score-label">{{ homeTeamName }}</div>
-                <div class="score-value">{{ result.predictHomeScore }}</div>
+                <div class="score-value">{{ (result.predictHomeScore ?? result.predict_home_score ?? 0) }}</div>
                 <div class="score-sub">主队得分</div>
               </div>
               <div class="vs-badge">VS</div>
               <div class="team-score team-score--away">
                 <div class="score-label">{{ awayTeamName }}</div>
-                <div class="score-value">{{ result.predictAwayScore }}</div>
+                <div class="score-value">{{ (result.predictAwayScore ?? result.predict_away_score ?? 0) }}</div>
                 <div class="score-sub">客队得分</div>
               </div>
             </div>
             <div class="grid-3">
               <div class="summary-stat">
                 <div class="summary-label">预测总分</div>
-                <div class="summary-value">{{ result.predictTotalScore }}</div>
+                <div class="summary-value">{{ (result.predictTotalScore ?? result.predict_total_score ?? 0) }}</div>
               </div>
               <div class="summary-stat">
                 <div class="summary-label">预测分差</div>
                 <div
                   class="summary-value"
-                  :class="result.predictScoreDiff > 0 ? 'summary-value--positive' : 'summary-value--negative'"
+                  :class="(result.predictScoreDiff ?? result.predict_score_diff ?? 0) > 0 ? 'summary-value--positive' : 'summary-value--negative'"
                 >
-                  {{ result.predictScoreDiff > 0 ? '+' : '' }}{{ result.predictScoreDiff }}
+                  {{ (result.predictScoreDiff ?? result.predict_score_diff ?? 0) > 0 ? '+' : '' }}{{ (result.predictScoreDiff ?? result.predict_score_diff ?? 0) }}
                 </div>
               </div>
               <div class="summary-stat">
                 <div class="summary-label">预测胜负</div>
                 <div
                   class="summary-value"
-                  :class="result.predictScoreDiff > 0 ? 'summary-value--positive' : 'summary-value--negative'"
+                  :class="(result.predictScoreDiff ?? result.predict_score_diff ?? 0) > 0 ? 'summary-value--positive' : 'summary-value--negative'"
                 >
-                  {{ result.predictScoreDiff > 0 ? '主胜' : result.predictScoreDiff === 0 ? '平局' : '客胜' }}
+                  {{ (result.predictScoreDiff ?? result.predict_score_diff ?? 0) > 0 ? '主胜' : (result.predictScoreDiff ?? result.predict_score_diff ?? 0) === 0 ? '平局' : '客胜' }}
                 </div>
               </div>
             </div>
