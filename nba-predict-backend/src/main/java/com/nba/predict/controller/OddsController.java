@@ -7,8 +7,11 @@ import com.nba.predict.entity.OddsData;
 import com.nba.predict.service.OddsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -17,6 +20,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/odds")
 @RequiredArgsConstructor
+@Validated
 public class OddsController {
 
     private final OddsService oddsService;
@@ -24,8 +28,8 @@ public class OddsController {
     @Operation(summary = "赔率列表")
     @GetMapping("/list")
     public Result<PageResult<OddsData>> list(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) Long homeTeamId,
             @RequestParam(required = false) Long awayTeamId,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate gameDate,

@@ -24,8 +24,7 @@
           <div class="neu-card-header">
             <span class="title">预测误差统计</span>
             <el-select v-model="selectedSeason" size="small" style="width:120px" @change="loadRecords">
-              <el-option label="2025-26" value="2025-26" />
-              <el-option label="2024-25" value="2024-25" />
+              <el-option v-for="s in SEASONS" :key="s" :label="s" :value="s" />
             </el-select>
           </div>
           <div v-if="records.length" ref="errorChartRef" class="chart-container"></div>
@@ -76,9 +75,10 @@ import { CanvasRenderer } from 'echarts/renderers'
 
 echarts.use([BarChart, LineChart, RadarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 import { datasourceApi, recordApi } from '@/api'
+import { SEASONS, CHART_COLORS } from '@/constants'
 import { DataAnalysis, TrendCharts, User, Connection } from '@element-plus/icons-vue'
 
-const selectedSeason = ref('2025-26')
+const selectedSeason = ref(SEASONS[0])
 const sourceChartRef = ref(null)
 const errorChartRef = ref(null)
 const playerChartRef = ref(null)
@@ -90,7 +90,7 @@ const playerErrorData = ref([])
 const sourceLoading = ref(false)
 let charts = []
 
-const chartColors = ['#1d428a', '#50C878', '#E6A762', '#E97451', '#A8C1B6', '#D9C7B8']
+const chartColors = CHART_COLORS
 
 onMounted(async () => {
   await Promise.all([loadSources(), loadRecords()])

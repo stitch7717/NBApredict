@@ -9,13 +9,17 @@ import com.nba.predict.scheduler.OptimizationTask;
 import com.nba.predict.service.TaskLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "定时任务接口")
 @RestController
 @RequestMapping("/task")
 @RequiredArgsConstructor
+@Validated
 public class TaskController {
 
     private final TaskLogService taskLogService;
@@ -25,8 +29,8 @@ public class TaskController {
     @Operation(summary = "任务执行日志")
     @GetMapping("/log")
     public Result<PageResult<ScheduleTaskLog>> listLogs(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String taskName,
             @RequestParam(required = false) String status) {
         var result = taskLogService.listLogs(page, size, taskName, status);

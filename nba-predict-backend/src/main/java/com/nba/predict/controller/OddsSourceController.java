@@ -7,7 +7,10 @@ import com.nba.predict.entity.OddsSource;
 import com.nba.predict.service.OddsSourceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/datasource")
 @RequiredArgsConstructor
+@Validated
 public class OddsSourceController {
 
     private final OddsSourceService oddsSourceService;
@@ -29,8 +33,8 @@ public class OddsSourceController {
     @Operation(summary = "数据源列表（分页）")
     @GetMapping("/page")
     public Result<PageResult<OddsSource>> list(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "10") int size) {
         Page<OddsSource> result = oddsSourceService.listSources(page, size);
         return Result.success(PageResult.of(result.getTotal(), page, size, result.getRecords()));
     }

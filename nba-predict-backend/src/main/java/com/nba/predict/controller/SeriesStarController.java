@@ -7,13 +7,17 @@ import com.nba.predict.entity.SeriesStar;
 import com.nba.predict.service.SeriesStarService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "系列赛接口")
 @RestController
 @RequestMapping("/series")
 @RequiredArgsConstructor
+@Validated
 public class SeriesStarController {
 
     private final SeriesStarService seriesStarService;
@@ -21,8 +25,8 @@ public class SeriesStarController {
     @Operation(summary = "系列赛之星列表")
     @GetMapping("/star")
     public Result<PageResult<SeriesStar>> listStars(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) String season) {
         Page<SeriesStar> result = seriesStarService.listStars(page, size, teamId, season);
@@ -38,8 +42,8 @@ public class SeriesStarController {
     @Operation(summary = "全赛季复盘")
     @GetMapping("/review")
     public Result<Object> review(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String season,
             @RequestParam(required = false) Long teamId) {
         return Result.success(seriesStarService.getSeasonReview(page, size, season, teamId));

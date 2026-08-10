@@ -7,8 +7,11 @@ import com.nba.predict.entity.PredictRecord;
 import com.nba.predict.service.RecordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -17,6 +20,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/record")
 @RequiredArgsConstructor
+@Validated
 public class RecordController {
 
     private final RecordService recordService;
@@ -24,8 +28,8 @@ public class RecordController {
     @Operation(summary = "预测记录列表")
     @GetMapping("/list")
     public Result<PageResult<PredictRecord>> list(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String predictType,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
