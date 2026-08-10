@@ -324,8 +324,8 @@ const handlePredict = async () => {
 const loadBattleRecords = async () => {
   try {
     const res = await teamApi.getBattleRecord({
-      teamId1: form.homeTeamId,
-      teamId2: form.awayTeamId,
+      team1Id: form.homeTeamId,
+      team2Id: form.awayTeamId,
     })
     battleRecords.value = res.data?.records || res.data || []
   } catch {

@@ -14,7 +14,7 @@ export const teamApi = {
   getDetail: (id) => request.get(`/team/detail/${id}`),
   predict: (data) => request.post('/team/predict', data),
   backtest: (data) => request.post('/team/backtest', data),
-  getBattleRecord: (params) => request.get('/team/battle/record', { params }),
+  getBattleRecord: (params) => request.get('/game/battle', { params }),
 }
 
 // 系列赛接口
