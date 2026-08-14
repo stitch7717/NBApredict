@@ -2243,5 +2243,272 @@ nba-predict-frontend/public/favicon.svg
 
 ---
 
+## 十三、v2 重构问题与修复（2026年8月10日）
+
+> v2 将系统重构为 NBA 数据门户（首页赛程 → 比赛详情 → 预测），本章记录重构过程中遇到的全部运行时问题。
+
+### 13.1 Java 微服务层问题
+
+#### 13.1.1 预测接口报"服务器异常"
+
+**问题描述：**
+
+前端 `axios.post(url, { playerId: 1 })` 发送 JSON 请求体，但 Controller 使用 `@RequestParam` 从 query string 读取参数，Spring 无法找到参数，抛出 `MissingServletRequestParameterException`，被全局异常处理器捕获后返回 500。
+
+**错误日志：**
+```
+系统异常: /api/player/predict - null
+```
+（NPE 无 message，日志中显示 null，排查困难）
+
+**解决方案：**
+
+POST 接口改用 `@RequestBody` + DTO record：
+
+```java
+// PlayerController.java — 修复前
+@PostMapping("/predict")
+public Result<Object> predict(@RequestParam Long playerId,
+                              @RequestParam(required = false) Long opponentPlayerId,
+                              @RequestParam(defaultValue = "常规赛") String scene,
+                              @RequestParam(defaultValue = "home") String homeAway) { }
+
+// 修复后
+@PostMapping("/predict")
+public Result<Object> predict(@RequestBody PlayerPredictRequest request) {
+    return Result.success(playerService.predict(
+            request.playerId(), request.opponentPlayerId(),
+            request.scene() != null ? request.scene() : "常规赛",
+            request.homeAway() != null ? request.homeAway() : "home"));
+}
+```
+
+新增 DTO：
+```java
+public record PlayerPredictRequest(
+    Long playerId, Long opponentPlayerId, String scene, String homeAway
+) {}
+```
+
+#### 13.1.2 编译错误：STAR_NOT_FOUND 找不到
+
+**问题描述：**
+
+重构 `SeriesStarServiceImpl.getStarDetail()` 时引用 `ResultCode.STAR_NOT_FOUND`，但忘记在枚举中添加该值，导致编译失败。
+
+**解决方案：**
+
+```java
+// ResultCode.java 业务错误段补充
+STAR_NOT_FOUND(1007, "系列赛之星不存在"),
+```
+
+#### 13.1.3 列表接口 NPE，全部数据加载失败
+
+**问题描述：**
+
+代码审查阶段在 8 个 Controller 类上添加 `@Validated` 以激活 `@Min`/`@Max` 分页参数校验，但 `@Validated` + `@RestController` 触发 Spring AOP 代理冲突，方法参数解析时抛出 NullPointerException。
+
+**错误日志：**
+```
+系统异常: /api/player/list - null
+```
+（NPE 无 message，难以定位）
+
+**解决方案：**
+
+从全部 Controller 移除 `@Validated`。分页参数校验改为手动或依赖 Service 层：
+
+```java
+// 修复前
+@Validated
+@RestController
+public class PlayerController { }
+
+// 修复后
+@RestController
+public class PlayerController { }
+```
+
+**经验教训**：`@Validated` 只用于 Service 层或 `@RequestBody` DTO 上的 `@Valid`，绝不放 Controller 类上。
+
+### 13.2 Python 算法层问题
+
+#### 13.2.1 球员列表接口 500
+
+**问题描述：**
+
+前端调用 `/data/players` 时，Vite 代理将请求错误地转发到 Java 后端（因为 axios 实例的 `baseURL: '/api'` 给所有请求加了前缀），Java 没有 `/data` 端点返回 500。
+
+**错误日志：**
+```
+GET http://localhost:3000/api/data/players?season=2025-26 500 (Internal Server Error)
+```
+
+**解决方案：**
+
+1. 创建独立 axios 实例：
+```js
+// request.js
+export const pythonRequest = axios.create({
+  baseURL: '',          // 无前缀
+  timeout: 30000,
+})
+```
+
+2. Vite 代理按前缀分流：
+```js
+// vite.config.js
+proxy: {
+  '/api':       { target: 'http://localhost:8080', changeOrigin: true },  // Java
+  '/data':      { target: 'http://localhost:8000', changeOrigin: true },  // Python
+  '/algorithm': { target: 'http://localhost:8000', changeOrigin: true },  // Python
+}
+```
+
+3. SQLAlchemy `count()` 后再 `all()` 的查询修改问题，重建查询对象解决。
+
+#### 13.2.2 后台更新任务参数错误
+
+**问题描述：**
+
+启动时后台线程调用 `run(skip_retrain=True)`，但 `daily_update.run()` 无任何参数。
+
+**错误日志：**
+```
+后台更新失败: run() got an unexpected keyword argument 'skip_retrain'
+```
+
+**解决方案：**
+
+```python
+# main.py — 修复前
+run(skip_retrain=True)
+# 修复后
+run()
+```
+
+#### 13.2.3 预测比分与胜率矛盾
+
+**问题描述：**
+
+胜率使用独立的净效率公式计算，与 Ridge 模型的比分预测互不相干，出现"胜率条显示主队 55%，但预测比分客队更高"的矛盾。且 `net_rating` 字段不在数据库中（运行时计算字段，通常为 null），导致所有球队胜率都接近 50%。
+
+**解决方案：**
+
+胜率直接从预测分差推导，与比分预测强制一致：
+
+```python
+def _calc_win_probability(self, predict_diff: int) -> float:
+    """从预测分差推导胜率：分差越大胜率越高"""
+    import math
+    return 1.0 / (1.0 + math.exp(-predict_diff / 7.0))
+```
+
+效果：分差 0 → 50%，分差 ±5 → 67%/33%，分差 ±10 → 81%/19%，分差 ±15 → 90%/10%。
+
+### 13.3 Vue 前端问题
+
+#### 13.3.1 首页白屏
+
+**问题描述：**
+
+打开 `localhost:3000` 白屏，控制台报 ReferenceError。
+
+**错误日志：**
+```
+ReferenceError: Cannot access 'formatDateStr' before initialization
+    at setup (index.vue:110:26)
+```
+
+**解决方案：**
+
+`const` 函数在 `ref()` 初始化器中调用时处于 TDZ（暂时性死区）。将函数定义移到 `ref()` 之前：
+
+```js
+// 修复前
+const selectedDate = ref(formatDateStr(new Date()))  // line 110
+const formatDateStr = (date) => { ... }              // line 115 之后定义
+
+// 修复后
+const formatDateStr = (date) => { ... }              // 先定义
+const selectedDate = ref(formatDateStr(new Date()))  // 再使用
+```
+
+#### 13.3.2 球员搜索下拉框为空
+
+**问题描述：**
+
+搜索球员无结果显示，下拉框空白。
+
+**解决方案：**
+
+`el-option` 的字段名与后端返回不一致：
+```html
+<!-- 修复前 -->
+<el-option v-for="item in playerOptions" :key="item.id" :label="item.name" :value="item.id" />
+
+<!-- 修复后 -->
+<el-option v-for="item in playerOptions" :key="item.playerId" :label="item.playerName" :value="item.playerId" />
+```
+
+#### 13.3.3 预测界面永远显示"客队占优"
+
+**问题描述：**
+
+后端日志显示预测正确（雷霆 130-105 奇才），前端界面却显示客胜、比分全为 0。
+
+**根因：**
+
+Python 返回 snake_case 字段（`predict_home_score`），前端模板读 camelCase（`result.predictHomeScore`）→ undefined → 全为 0 → `predictScoreDiff = 0` → 永远显示客胜。
+
+**解决方案：**
+
+所有字段引用加 `??` 降级链：
+
+```js
+// 修复前
+result.predictHomeScore
+
+// 修复后
+(result.predictHomeScore ?? result.predict_home_score ?? 0)
+```
+
+此问题在全项目 5 处字段上重复出现（homeWinProb、predictHomeScore、predictAwayScore、predictTotalScore、predictScoreDiff），均已修复。
+
+### 13.4 环境配置问题
+
+#### 13.4.1 数据库密码导致本地启动失败
+
+**问题描述：**
+
+安全性修复将 `application.yml` 的数据库密码改为 `${DB_PASSWORD}`（无默认值），本地开发环境未设置环境变量导致连接失败。
+
+**解决方案：**
+
+恢复默认值，生产通过环境变量覆盖：
+```yaml
+password: ${DB_PASSWORD:223688}
+```
+
+#### 13.4.2 Sass 弃用警告
+
+**错误日志：**
+```
+Deprecation Warning [legacy-js-api]: The legacy JS API is deprecated
+and will be removed in Dart Sass 2.0.0.
+```
+
+**解决方案：**
+
+```js
+// vite.config.js
+scss: {
+  api: 'modern',   // Vite 5.1 支持的值（5.4+ 才支持 'modern-compiler'）
+}
+```
+
+---
+
 *文档完成时间：2026年5月4日*
-*最近更新：2026年8月10日 — 全量代码审查与质量改进、安全加固、DTO 封装、架构解耦、Git 仓库初始化*
+*最近更新：2026年8月10日 — v2 数据门户重构、胜率算法重写、13 类运行时问题修复、Git 仓库初始化、代码审查与质量改进*
