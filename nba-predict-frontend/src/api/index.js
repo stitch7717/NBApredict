@@ -27,6 +27,7 @@ export const recordApi = {
 // 赔率接口
 export const oddsApi = {
   getSource: () => request.get('/datasource/list'),
+  getList: (params) => request.get('/odds/list', { params }),
   evaluate: () => request.post('/datasource/evaluate'),
   switch: (data) => request.post('/datasource/switch', null, { params: data }),
   collect: (data) => request.post('/odds/collect', data),

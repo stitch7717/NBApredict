@@ -90,8 +90,14 @@
             </el-col>
             <el-col :span="12">
               <div class="chart-block">
-                <div class="chart-block-title">命中率</div>
-                <ShootingChart :items="shootingItems" :color="radarColor" :height="280" />
+                <div class="chart-block-title">半场投篮热区</div>
+                <ShootingCourt
+                  :fg-pct="sd.fg_percentage ?? 0"
+                  :three-pct="sd.three_percentage ?? 0"
+                  :ft-pct="sd.ft_percentage ?? 0"
+                  :ts-pct="sd.true_shooting_pct ?? 0"
+                  :height="300"
+                />
               </div>
             </el-col>
           </el-row>
@@ -179,17 +185,6 @@ const abilityValues = computed(() => {
 })
 
 const radarColor = computed(() => teamPrimaryColor(player.value?.teamAbbr || ''))
-
-const shootingItems = computed(() => {
-  const s = sd.value
-  return [
-    { label: '命中率', value: s.fg_percentage ?? 0 },
-    { label: '三分命中率', value: s.three_percentage ?? 0 },
-    { label: '罚球命中率', value: s.ft_percentage ?? 0 },
-    { label: '真实命中率', value: s.true_shooting_pct ?? 0 },
-    { label: '有效命中率', value: s.effective_fg_pct ?? 0 },
-  ]
-})
 
 const statItems = computed(() => {
   const s = sd.value

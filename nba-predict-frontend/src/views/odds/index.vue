@@ -2,6 +2,71 @@
   <div class="odds-page">
     <h2 class="page-title">赔率管理</h2>
 
+    <!-- 按日期查询赔率数据 -->
+    <div class="neu-card" style="margin-bottom:20px">
+      <div class="neu-card-header">
+        <span class="title">赔率数据</span>
+        <div class="odds-query-bar">
+          <el-date-picker
+            v-model="oddsDate"
+            type="date"
+            placeholder="选择日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            :clearable="false"
+            @change="loadOddsData"
+          />
+        </div>
+      </div>
+      <el-table :data="oddsData" stripe v-loading="oddsLoading" style="width:100%">
+        <el-table-column label="比赛" min-width="200">
+          <template #default="{ row }">
+            <span class="team-cell">
+              <TeamLogo :abbr="teamAbbrOfId(row.homeTeamId)" :size="22" />
+              <span>{{ teamNameOfId(row.homeTeamId) }}</span>
+              <span class="matchup-vs">vs</span>
+              <TeamLogo :abbr="teamAbbrOfId(row.awayTeamId)" :size="22" />
+              <span>{{ teamNameOfId(row.awayTeamId) }}</span>
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="主胜" width="90">
+          <template #default="{ row }">
+            <span class="mono-num">{{ row.homeWinOdds ?? '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="客胜" width="90">
+          <template #default="{ row }">
+            <span class="mono-num">{{ row.awayWinOdds ?? '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="让分" width="90">
+          <template #default="{ row }">
+            <span class="mono-num">{{ row.handicapLine ?? '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="大小分" width="90">
+          <template #default="{ row }">
+            <span class="mono-num">{{ row.totalLine ?? '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="dataQuality" label="质量" width="100">
+          <template #default="{ row }">
+            <span class="neu-tag" :class="qualityTagClass(row.dataQuality)">{{ row.dataQuality || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="采集时间" width="170">
+          <template #default="{ row }">
+            <span class="mono-num">{{ row.collectTime ?? '-' }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div v-if="!oddsLoading && !oddsData.length" class="empty-state" style="padding:24px">
+        <div class="empty-title">该日期暂无赔率数据</div>
+        <div class="empty-desc">选择其他日期，或使用下方"手动采集"抓取</div>
+      </div>
+    </div>
+
     <el-row :gutter="24">
       <!-- 数据源状态 -->
       <el-col :span="12">
@@ -111,7 +176,7 @@ import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/compon
 import { CanvasRenderer } from 'echarts/renderers'
 
 echarts.use([RadarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
-import { datasourceApi, oddsApi } from '@/api'
+import { datasourceApi, oddsApi, teamApi } from '@/api'
 import { Download, DataAnalysis } from '@element-plus/icons-vue'
 
 const sources = ref([])
@@ -123,15 +188,63 @@ const scoreChartRef = ref(null)
 const backtestResult = ref(null)
 let scoreChart = null
 
+// 按日期查询赔率
+const oddsDate = ref(formatDateStr(new Date()))
+const oddsData = ref([])
+const oddsLoading = ref(false)
+const teamMap = ref({})
+
 const collectForm = reactive({ sourceId: null, date: new Date() })
 const backtestForm = reactive({ sourceId: null, dateRange: [] })
 
 const chartColors = ['#1d428a', '#50C878', '#E6A762', '#E97451', '#A8C1B6']
 
+const formatDateStr = (date) => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 onMounted(() => {
   loadSources()
+  loadTeamMap()
+  loadOddsData()
   window.addEventListener('resize', handleResize)
 })
+
+const loadTeamMap = async () => {
+  try {
+    const res = await teamApi.getList({ page: 1, size: 30 })
+    const records = res.data?.records || []
+    for (const t of records) {
+      teamMap.value[t.teamId] = t
+    }
+  } catch (e) { console.error(e) }
+}
+
+const teamNameOfId = (id) => teamMap.value[id]?.teamName || `#${id}`
+const teamAbbrOfId = (id) => teamMap.value[id]?.abbreviation || ''
+
+const qualityTagClass = (q) => {
+  if (!q) return ''
+  if (q === 'HIGH' || q === '高') return 'neu-tag--green'
+  if (q === 'MEDIUM' || q === '中') return 'neu-tag--orange'
+  return 'neu-tag--red'
+}
+
+const loadOddsData = async () => {
+  oddsLoading.value = true
+  try {
+    const res = await oddsApi.getList({ gameDate: oddsDate.value, page: 1, size: 100 })
+    oddsData.value = res.data?.records || []
+  } catch (e) {
+    console.error(e)
+    oddsData.value = []
+  } finally {
+    oddsLoading.value = false
+  }
+}
 
 onBeforeUnmount(() => {
   scoreChart?.dispose()
