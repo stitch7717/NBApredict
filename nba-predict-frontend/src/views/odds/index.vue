@@ -188,6 +188,13 @@ const scoreChartRef = ref(null)
 const backtestResult = ref(null)
 let scoreChart = null
 
+const formatDateStr = (date) => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 // 按日期查询赔率
 const oddsDate = ref(formatDateStr(new Date()))
 const oddsData = ref([])
@@ -198,13 +205,6 @@ const collectForm = reactive({ sourceId: null, date: new Date() })
 const backtestForm = reactive({ sourceId: null, dateRange: [] })
 
 const chartColors = ['#1d428a', '#50C878', '#E6A762', '#E97451', '#A8C1B6']
-
-const formatDateStr = (date) => {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
 
 onMounted(() => {
   loadSources()

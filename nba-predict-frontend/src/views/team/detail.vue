@@ -99,11 +99,11 @@
             <div class="chart-block">
               <div class="chart-block-title">半场投篮热区</div>
               <ShootingCourt
+                :zones="team.shootingZones || []"
                 :fg-pct="sd.fg_percentage ?? 0"
                 :three-pct="sd.three_percentage ?? 0"
                 :ft-pct="sd.ft_percentage ?? 0"
                 :ts-pct="sd.true_shooting_pct ?? 0"
-                :height="300"
               />
             </div>
           </el-col>
@@ -298,7 +298,11 @@ const loadTeamDetail = async () => {
   try {
     const res = await dataApi.getTeamDetail(teamId.value, season.value)
     const data = res.data || res
-    team.value = { ...toTeamCamel(data), seasonData: data.season_data || {} }
+    team.value = {
+      ...toTeamCamel(data),
+      seasonData: data.season_data || {},
+      shootingZones: data.shooting_zones || [],
+    }
     // 从历史赛季列表提取可选赛季（响应中 seasons 数组）
     const history = (data.seasons || []).map((s) => s.season).filter(Boolean)
     if (history.length) {

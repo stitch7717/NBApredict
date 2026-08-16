@@ -96,7 +96,6 @@
                   :three-pct="sd.three_percentage ?? 0"
                   :ft-pct="sd.ft_percentage ?? 0"
                   :ts-pct="sd.true_shooting_pct ?? 0"
-                  :height="300"
                 />
               </div>
             </el-col>

@@ -585,3 +585,18 @@ INSERT INTO team (nba_id, team_name, team_name_en, abbreviation, conference, div
 ('1610612758', '国王', 'Kings', 'SAC', 'West', 'Pacific'),
 ('1610612759', '马刺', 'Spurs', 'SAS', 'West', 'Southwest'),
 ('1610612762', '爵士', 'Jazz', 'UTA', 'West', 'Northwest');
+
+-- 球队分距离投篮命中数据（bbref Shooting 表）
+CREATE TABLE IF NOT EXISTS team_shooting_zones (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    team_id BIGINT NOT NULL COMMENT '球队ID',
+    season VARCHAR(10) NOT NULL COMMENT '赛季',
+    zone VARCHAR(20) NOT NULL COMMENT '距离分区: at_rim/3_10/10_16/16_3p/3p',
+    fg_made INT DEFAULT 0 COMMENT '命中数',
+    fg_attempted INT DEFAULT 0 COMMENT '出手数',
+    fg_percentage DECIMAL(5,3) DEFAULT 0 COMMENT '该区命中率',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_team_season_zone (team_id, season, zone),
+    KEY idx_team (team_id)
+) COMMENT='球队分距离投篮命中数据(bbref)';

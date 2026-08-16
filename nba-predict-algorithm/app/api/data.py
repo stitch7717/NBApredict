@@ -6,7 +6,7 @@ from typing import Optional
 from datetime import date, timedelta
 
 from app.db.database import SessionLocal
-from app.db.models import Team, TeamData, Player, PlayerData, GameRecord
+from app.db.models import Team, TeamData, Player, PlayerData, GameRecord, TeamShootingZone
 
 router = APIRouter()
 
@@ -65,6 +65,12 @@ async def get_team(team_id: int, season: str = "2025-26"):
         # 获取所有赛季数据
         all_seasons = db.query(TeamData).filter(TeamData.team_id == team_id).all()
 
+        # 分距离投篮命中（bbref Shooting 表，可能暂无数据）
+        zone_rows = db.query(TeamShootingZone).filter(
+            TeamShootingZone.team_id == team_id,
+            TeamShootingZone.season == season,
+        ).all()
+
         return {
             "team_id": t.team_id,
             "team_name": t.team_name,
@@ -80,6 +86,15 @@ async def get_team(team_id: int, season: str = "2025-26"):
             "strength_score": t.strength_score,
             "season_data": _team_data_dict(td) if td else None,
             "seasons": [_team_data_dict(s) for s in all_seasons],
+            "shooting_zones": [
+                {
+                    "zone": z.zone,
+                    "fg_made": z.fg_made,
+                    "fg_attempted": z.fg_attempted,
+                    "fg_percentage": z.fg_percentage,
+                }
+                for z in zone_rows
+            ],
         }
 
 

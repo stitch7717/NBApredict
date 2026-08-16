@@ -321,3 +321,17 @@ class SeriesStar(Base):
     key_game_id = Column(BigInteger)
     key_game_score = Column(Integer)
     key_game_fg_pct = Column(Float)
+
+
+class TeamShootingZone(Base):
+    """球队分距离投篮命中数据（bbref Shooting 表）"""
+    __tablename__ = "team_shooting_zones"
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    team_id = Column(BigInteger)
+    season = Column(String(10))
+    zone = Column(String(20))
+    fg_made = Column(Integer, default=0)
+    fg_attempted = Column(Integer, default=0)
+    fg_percentage = Column(Float, default=0)
+    create_time = Column(DateTime, server_default=func.now())
+    update_time = Column(DateTime, server_default=func.now(), onupdate=func.now())
