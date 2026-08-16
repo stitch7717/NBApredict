@@ -18,8 +18,11 @@ from sklearn.preprocessing import StandardScaler
 from app.db.database import SessionLocal
 from app.db.models import GameRecord, TeamData, AlgorithmParamSnapshot
 
-# 训练/验证赛季划分 (保持原有 2+2)
-TRAIN_SEASONS = ["2022-23", "2023-24"]
+# 训练/验证赛季划分 (10 赛季数据: 前 8 个训练, 后 2 个验证)
+TRAIN_SEASONS = [
+    "2016-17", "2017-18", "2018-19", "2019-20",
+    "2020-21", "2021-22", "2022-23", "2023-24",
+]
 VAL_SEASONS = ["2024-25", "2025-26"]
 
 
@@ -122,9 +125,9 @@ def compute_recent_stats(games: list) -> dict:
 def build_features(games: list, team_stats: dict, recent_stats: dict, target_seasons: list) -> tuple:
     """
     为每场比赛构建特征向量 (28 个特征)
-    返回: (X, y_home, y_away, season_list)
+    返回: (X, y_home, y_away, season_list, playoff_list)
     """
-    X, y_home, y_away, seasons_out = [], [], [], []
+    X, y_home, y_away, seasons_out, playoffs_out = [], [], [], [], []
 
     for g in games:
         if g["season"] not in target_seasons:
@@ -195,8 +198,9 @@ def build_features(games: list, team_stats: dict, recent_stats: dict, target_sea
         y_home.append(g["home_score"])
         y_away.append(g["away_score"])
         seasons_out.append(g["season"])
+        playoffs_out.append(g["is_playoff"])
 
-    return np.array(X), np.array(y_home), np.array(y_away), seasons_out
+    return np.array(X), np.array(y_home), np.array(y_away), seasons_out, playoffs_out
 
 
 # 特征名 (28 + 2 momentum = 30)
@@ -233,14 +237,14 @@ def train_and_evaluate():
 
     # 构建训练集
     logger.info("构建训练集...")
-    X_train, y_home_train, y_away_train, _ = build_features(
+    X_train, y_home_train, y_away_train, _, _ = build_features(
         all_games, team_stats, recent_stats, TRAIN_SEASONS
     )
     logger.info(f"训练集: {len(X_train)} 场")
 
     # 构建验证集
     logger.info("构建验证集...")
-    X_val, y_home_val, y_away_val, val_seasons = build_features(
+    X_val, y_home_val, y_away_val, val_seasons, _ = build_features(
         all_games, team_stats, recent_stats, VAL_SEASONS
     )
     logger.info(f"验证集: {len(X_val)} 场")

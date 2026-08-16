@@ -11,12 +11,22 @@
           <el-form :model="form" label-width="70px">
             <el-form-item label="主队" required>
               <el-select v-model="form.homeTeamId" filterable placeholder="选择主队" style="width:100%">
-                <el-option v-for="t in teamOptions" :key="t.teamId" :label="t.teamName" :value="t.teamId" />
+                <el-option v-for="t in teamOptions" :key="t.teamId" :label="t.teamName" :value="t.teamId">
+                  <span class="team-cell">
+                    <TeamLogo :abbr="t.abbreviation || ''" :size="20" />
+                    <span>{{ t.teamName }}</span>
+                  </span>
+                </el-option>
               </el-select>
             </el-form-item>
             <el-form-item label="客队" required>
               <el-select v-model="form.awayTeamId" filterable placeholder="选择客队" style="width:100%">
-                <el-option v-for="t in teamOptions" :key="t.teamId" :label="t.teamName" :value="t.teamId" />
+                <el-option v-for="t in teamOptions" :key="t.teamId" :label="t.teamName" :value="t.teamId">
+                  <span class="team-cell">
+                    <TeamLogo :abbr="t.abbreviation || ''" :size="20" />
+                    <span>{{ t.teamName }}</span>
+                  </span>
+                </el-option>
               </el-select>
             </el-form-item>
             <el-form-item label="场景">
@@ -58,13 +68,13 @@
               <el-tab-pane label="纯系统预测" name="system">
                 <div class="score-display">
                   <div class="team-score team-score--home">
-                    <div class="team-name">{{ result.homeTeamName }}</div>
+                    <div class="team-name"><span class="team-cell"><TeamLogo :abbr="teamAbbrOf(result.homeTeamName)" :size="28" /> <span>{{ result.homeTeamName }}</span></span></div>
                     <div class="score">{{ result.predictHomeScore }}</div>
                     <div class="label">主队得分</div>
                   </div>
                   <div class="vs-badge">VS</div>
                   <div class="team-score team-score--away">
-                    <div class="team-name">{{ result.awayTeamName }}</div>
+                    <div class="team-name"><span class="team-cell"><TeamLogo :abbr="teamAbbrOf(result.awayTeamName)" :size="28" /> <span>{{ result.awayTeamName }}</span></span></div>
                     <div class="score">{{ result.predictAwayScore }}</div>
                     <div class="label">客队得分</div>
                   </div>
@@ -93,13 +103,13 @@
                 <template v-if="form.useOdds">
                   <div class="score-display">
                     <div class="team-score team-score--home">
-                      <div class="team-name">{{ result.homeTeamName }}</div>
+                      <div class="team-name"><span class="team-cell"><TeamLogo :abbr="teamAbbrOf(result.homeTeamName)" :size="28" /> <span>{{ result.homeTeamName }}</span></span></div>
                       <div class="score">{{ result.predictHomeScoreOdds }}</div>
                       <div class="label">主队得分</div>
                     </div>
                     <div class="vs-badge">VS</div>
                     <div class="team-score team-score--away">
-                      <div class="team-name">{{ result.awayTeamName }}</div>
+                      <div class="team-name"><span class="team-cell"><TeamLogo :abbr="teamAbbrOf(result.awayTeamName)" :size="28" /> <span>{{ result.awayTeamName }}</span></span></div>
                       <div class="score">{{ result.predictAwayScoreOdds }}</div>
                       <div class="label">客队得分</div>
                     </div>
@@ -154,6 +164,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { teamApi } from '@/api'
+import { teamAbbrOf } from '@/constants/teams'
 import { Trophy, TrendCharts } from '@element-plus/icons-vue'
 
 const form = reactive({ homeTeamId: null, awayTeamId: null, scene: '常规赛', useOdds: false })
@@ -177,13 +188,17 @@ const handlePredict = async () => {
     const res = await teamApi.predict({ ...form })
     result.value = res.data
     activeVersion.value = 'system'
-    ElMessage.success('预测完成')
+    if (res.data?.degraded) {
+      ElMessage.warning('算法服务不可用，当前为降级数据（仅队名，无预测数值）')
+    } else {
+      ElMessage.success('预测完成')
+    }
   } catch { ElMessage.error('预测失败') } finally { predicting.value = false }
 }
 </script>
 
 <style lang="scss" scoped>
-.team-predict-page { max-width: 1400px; }
+.team-predict-page { max-width: 1400px; margin: 0 auto; }
 
 .hint-text { margin-left: 10px; font-size: 12px; color: $text-muted; }
 .matchup-text { font-size: 14px; color: $text-secondary; line-height: 1.7; }

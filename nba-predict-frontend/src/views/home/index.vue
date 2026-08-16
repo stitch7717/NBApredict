@@ -57,6 +57,7 @@
           <!-- 中间: 对阵信息 -->
           <div class="game-matchup">
             <div class="team team--home" :class="{ winner: game.homeWin === 1 }">
+              <TeamLogo :abbr="teamMap[game.homeTeamId]?.abbreviation || ''" :size="28" />
               <span class="team-abbr">{{ teamMap[game.homeTeamId]?.abbreviation || 'HOM' }}</span>
               <span v-if="isFinished(game)" class="team-score">{{ game.homeScore }}</span>
             </div>
@@ -65,6 +66,7 @@
               <span v-if="isScheduled(game)" class="game-time">{{ formatTime(game.gameDate) }}</span>
             </div>
             <div class="team team--away" :class="{ winner: game.homeWin === 0 }">
+              <TeamLogo :abbr="teamMap[game.awayTeamId]?.abbreviation || ''" :size="28" />
               <span class="team-abbr">{{ teamMap[game.awayTeamId]?.abbreviation || 'AWY' }}</span>
               <span v-if="isFinished(game)" class="team-score">{{ game.awayScore }}</span>
             </div>
@@ -227,6 +229,7 @@ const goToGame = (gameId) => {
 <style lang="scss" scoped>
 .home-page {
   max-width: 1200px;
+  margin: 0 auto;
 }
 
 // 控制栏

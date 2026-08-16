@@ -47,7 +47,7 @@ COEFFICIENT_CONFIG = {
     "home_coeff": {"value": 1.055, "min": 1.030, "max": 1.080, "desc": "主场系数"},
     "fatigue_coeff": {"value": 0.960, "min": 0.920, "max": 1.000, "desc": "疲劳系数"},
     "stability_coeff": {"value": 0.950, "min": 0.850, "max": 1.050, "desc": "稳定性系数"},
-    "odds_weight": {"value": 0.200, "min": 0.000, "max": 0.300, "desc": "赔率融合权重"},
+    "odds_weight": {"value": 0.300, "min": 0.000, "max": 0.500, "desc": "赔率融合权重（回测验证 w≈0.3 最优）"},
 }
 
 # 优化配置

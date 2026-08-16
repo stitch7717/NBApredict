@@ -139,7 +139,7 @@ const resetCoefficients = () => {
 </script>
 
 <style lang="scss" scoped>
-.settings-page { max-width: 1400px; }
+.settings-page { max-width: 1400px; margin: 0 auto; }
 
 .switch-list {
   display: flex;

@@ -706,6 +706,22 @@ a:hover { color: color.adjust($color-info, $lightness: 10%); }
   padding: 0 $space-lg;
 }
 
+// 队标 + 球队名通用组合布局（表格单元格、下拉选项、对阵展示等）
+.team-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  vertical-align: middle;
+}
+
+// 对阵双方之间的 vs 分隔符
+.matchup-vs {
+  font-size: 11px;
+  color: $text-muted;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

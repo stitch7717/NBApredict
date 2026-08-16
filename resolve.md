@@ -2508,7 +2508,169 @@ scss: {
 }
 ```
 
+## 十四、数据源封禁事件复盘（2026年8月14日补记）
+
+### 14.1 ESPN API 不稳定与数据源迁移（与 4.4 对应的事件经过）
+
+**事件经过：**
+
+2026年5月前，系统以 ESPN API 为主数据源。高频请求时出现不稳定、超时（详见 4.4），当时讨论过的解决方案之一是**挂 VPN 节点换 IP**。因当时手头没有可用节点，放弃该路线，改为切换数据源：ESPN → `nba_api`（stats.nba.com 官方接口）。
+
+**复盘结论：换数据源是比挂 VPN 更正确的解法：**
+
+1. stats.nba.com 主要封**机房 IP 段**（云厂商、数据中心），商业 VPN 出口多为机房 IP，挂 VPN 可能适得其反
+2. ESPN API 的问题是高频超时而非 IP 封禁，降频使用后无需换 IP
+3. 现行架构无需 VPN 即可运行：`daily_update.py` → `fetch_nba_data.py`（nba_api，主数据源）+ `fetch_injury_report.py`（ESPN 补充），0.6 秒请求间隔 + 3 次指数退避
+
+### 14.2 赔率数据源现状
+
+`ODDS_SOURCE_CONFIG` 配置了 win007/covers/okooo/oddsportal 四个 CRAWLER 源，但 `odds_service.collect()` 未实现具体爬虫逻辑（返回"需实现具体爬虫逻辑"）。
+
+后续如需实现赔率采集，注意：
+
+- win007/okooo 为国内站点，封海外 IP，**挂 VPN 反而有害**
+- oddsportal 有 Cloudflare 人机校验，换 IP 无法绕过
+- 优先考虑公开赔率 API 或按量付费住宅代理，而非 VPN
+
+### 14.3 VPN 对项目的实际价值
+
+- 数据管道（nba_api + ESPN 补充）不需要 VPN，且挂 VPN 有被 stats.nba.com 误伤的风险
+- VPN 仅对开发环境便利有用：Kaggle 数据集下载、访问被墙文档、GitHub 偶发卡顿
+- 依赖安装走国内镜像（npmmirror / 清华 pip）性价比更高
+
+### 14.4 10 赛季数据重建（2026年8月14日）
+
+**背景：** 用户要求爬取近 10 个赛季（2016-17..2025-26）的球员/球队数据、比赛比分胜负和球员名单，校验已有数据正确性，并补齐页面显示但无数据的字段（position 等）。
+
+**遇到的核心障碍：** stats.nba.com 官方 API 被 Akamai 完全封锁（"We are unable to process your request"）。尝试了 7 种方案全部失败：直连、VPN 节点、cookie 预热、Playwright 拿 Akamai cookie、浏览器内同源 fetch（被 Akamai JS 拦截）、升级 nba_api 1.11.4、破解新的 OAUTH2 access_token 认证流程（STS token 能拿到但 API 仍拒）。
+
+**最终架构：**
+- 比赛记录：ESPN site API（scoreboard 按月区间 ~90 次调用，事件缓存 `data/espn_events_cache.json`，nba_game_id 用 `espn_<id>` 格式）
+- 球员/球队数据与名单：basketball-reference（curl 子进程抓取——Python requests 的 TLS 指纹被 403；league 页 3 种球员表 + 战绩表，`player_roster` 新表存每赛季每队名单）
+- 校验：`scripts/verify_nba_data.py`（完整性 + ESPN 缓存交叉 + bbref 独立源比对）
+
+**数据修复记录：**
+- 删除 54 场伪造的未来比赛、66 条重复、~200 场多余 2024-25 比赛（ESPN 全局对账自动完成）
+- 清空 477 个随机假 position，bbref 回填真实位置（98% 填充）
+- 2022-26 四个赛季的球员数据从 stats.nba.com 换为 bbref 源（补上了官方 API 缺失的 per/bpm/vorp/win_shares）
+- 新增 player_roster 表解决"换队球员历史归属丢失"问题
+- 修复 fetch_nba_data.py 的 game_date 占位符 bug 的思路转移到 ESPN 源；compute_team_stats 新增 compute_season_derived（只更新衍生列，不覆盖 API 来源字段），修复 daily_update "fetch 清空后 compute 跳过"的交互 bug
+- 前端 SEASONS 扩到 10 赛季、去硬编码 '2025-26'、team/list.vue 胜率 null guard
+
+**已知遗留（待 Cloudflare 冷却后补跑）：**
+- player_roster 2016-17（388 行）和 2018-19（397 行）名单略少（预期 ~430+），重跑命令：`python scripts/fetch_bbref_seasons.py --seasons 2016-17,2018-19 --force --skip-bio`
+- 身高/体重/生日回填完成 598 条，剩余深替补球员数据（bbref 限流所致）
+
+### 14.5 每赛季回测与盘口基线（2026年8月15日）
+
+**回测结果**（scripts/backtest_seasons.py，走查式：预测赛季 S 只用 S 之前的数据训练）：
+- 诚实回测（模式 B，时点特征无泄漏）：10,831 场，胜率命中率 **65.1%**（猜主队 56.2%，超出 +8.9%；"押滚动胜率高者" 63.5%，超出 +1.6%）；MAE 总分 15.05、分差 10.88
+- 常规赛 65.2%，季后赛 63.5%
+- 最差 2022-23（61.6%，冷门季），最好 2025-26（69.4%，训练数据最多）
+- 伤病特征（1,620 条历史伤病，2016-20）加入后无提升（±0.0%）——近10场状态特征已吸收伤病信息
+- 线上口径（模式 A，含赛季均值泄漏）67.2%，泄漏虚高约 2%
+
+**赔率数据**：win007 篮球站已死（DNS 不解析）、oddsportal/covers 被 Cloudflare 封锁、okooo 历史归档 405。最终用 **Kaggle 数据集 cviaxmiwnptr/nba-betting-data**（2007-2026，含让分/大小/胜负盘/逐节比分）导入 12,848 场到 odds_data 表，并回填 9,846 场逐节比分。
+- **盘口热门命中率（市场基准）: 67.6%**；模型 65.1%——**模型跑不赢盘口**（差 2.5%），符合"散户模型跑不赢收盘线"的行业常识
+- 让分盘热门赢盘率恰好 50.0%，验证了盘口数据质量（收盘线高效定价）
+- 2022-23（模型 61.6% vs 盘口 60.0%）和 2025-26（69.3% vs 69.0%）模型小胜盘口，属小样本波动
+
+**ESPN 日期坑**：ESPN scoreboard 的 event date 是 UTC，美东/太平洋晚场比赛显示为次日——曾导致半数比赛日期 +1 天。修复规则：UTC 时刻 < 9 点的日期减 1 天（美国当地比赛最早 17:00 UTC 开始）。reconcile 按 nba_game_id 优先匹配，日期修正后对账重跑。
+
+### 14.6 模型重训与赔率融合上线（2026年8月15日）
+
+- **高阶数据补全**（backfill_team_advanced.py）：bbref 联赛页 Team/Opponent/Misc 表 + Kaggle games_misc.csv（快攻/内线/二次进攻）+ net_rating 计算，team_data 300 行基本全齐
+- **生产模型重训**（train_model.py 扩到 10 赛季: 前 8 训练后 2 验证）：胜率 68.9%、MAE 总分 14.45（旧 16.61，改善 13%），已保存 ridge_model.json 并自动生效
+- **赔率融合正式接入**（team_service.py）: fused_diff = 模型分差×(1-w) + (-让分线)×w，w=0.3（DB system_config odds_weight + settings 默认），融合结果直接替换主预测；回测验证提升 +2.8%（65.1%→67.9%）
+- **赛季剔除实验**：无任何单一赛季对准确度影响超过 ±0.5%，"删旧数据提升准确度"不成立
+- **大小分预测**：大/小命中 49.3%≈抛硬币（盘口线高效），模型总分系统性高估 +1.9 分（展示可 -2 分校准，MAE 15.05→14.94）
+
+### 14.7 事故记录与补充分析（2026年8月15日）
+
+**对账删库事故（教训）**：
+- fetch_espn_games.py 对账逻辑曾两次误删 game_record：第一次按赛季循环删除"多余行"把其它赛季数据全删；第二次日期修正后按 key 匹配撞 uk_nba_game_id 唯一键事务回滚（本次无损失）。最终修复：全局一次性对账 + nba_game_id 优先匹配 + 幂等重跑。**教训：动库前必须先 mysqldump**（计划里有这一步但被跳过，是本次最大流程失误）。
+
+**下注模拟（10 元/注，非博彩建议，仅模型能力边界分析）**：
+- 胜平负跟模型：6 个有赔率赛季共 6,448 注，64.5% 命中，累计 -2,459.90 元（ROI -3.8%）
+- 胜平负跟盘口热门：6,921 注，66.8% 命中，-3,369.94 元（-4.9%）——模型押弱队多、正赔率大，反而亏得少
+- 大小分（1.91 平赔模拟）：10,828 注，49.3% 命中，-6,362 元（-5.9%）
+- 结论：三个玩法全部跑不赢抽水，模型是分析工具不是印钞机；答辩时这些对照表反而是诚实加分项
+
+**模型押弱队案例（scripts/upset_cases.py）**：
+- 9 赛季共 864 场押滚动胜率低 ≥5% 的一方，命中 53.9%（弱队实际胜率远低于此，说明有真实信号）
+- 判断依据（特征偏离最显著）：① 弱队坐镇主场 ② 弱队近 10 场手感火热（momentum 高）③ 强队场均失分高（公式里权重最大的特征，coef +5.6）
+- 典型案例：2017-10-28 鹈鹕(40%)vs骑士(60%) 预测 110-109 实际 123-101 ✓；反面 2017-11-02 尼克斯(50%)vs火箭(62.5%) 预测 104-102 实际 97-119 ✗
+
+**历史伤病数据**：
+- prosportstransactions.com 被 Cloudflare 对机场 IP 永久质询（连真实浏览器都过不去）；bbref injuries.fcgi 的 year 参数无效（只返回当前伤病）
+- 最终用 tylerferguson/NBAinjuries R 数据集（pyreadr 读取）导入 1,620 条（2016-17..2019-20，含精确受伤/复出窗口）
+- 伤病特征回测零提升的归因：近 10 场状态特征已吸收伤病信息（伤病是"因"、近期战绩是"果"），特征冗余
+
+**每赛季数据画像（"时代进步"的量化）**：
+- 分差标准差 13.7（2017-18）→ 16.5（2025-26）；场均总分 211.2 → 230.2；|分差|≥25 场次 93 → 184
+- 近年比赛波动确实显著变大（三分潮+节奏加快），但"删旧赛季数据提升准确度"被实验证伪（影响 <±0.5%）
+
+### 14.8 重复错误清单与防复发红线（2026年8月15日整理）
+
+跨会话梳理发现 8 类错误在项目生命周期内反复出现（初期 + 本次复发），全部可预防：
+
+| # | 错误模式 | 初期发生 | 本次复发 | 预防措施 |
+|---|---------|---------|---------|---------|
+| 1 | **队名/缩写映射不一致** | ESPN 缩写不匹配（GS/GSW、NO/NOP 等 6 队数据丢失，4.2.1/4.4.1） | bbref 连环 5 变体：全名带星号、尾词（Trail Blazers）、LA vs Los Angeles、分区名表头、大小写 | 单一 `team_id_of()` 映射函数 + 每次导入后断言 30 队全匹配（verify 已有）+ 新源接入先跑匹配率报告 |
+| 2 | **外部数据源失效/封锁** | 新浪体育 API 404 废弃（4.2.8） | stats.nba.com 被封、win007 域名死、prosportstransactions/oddsportal/covers 被 Cloudflare 封、okooo WAF | 数据源双通道 + 关键数据落本地缓存（espn_events_cache 已做）+ 数据源视为"随时会死" |
+| 3 | **硬编码值散落** | 球队统计写死 assists=25.0 等（4.4.1）、reload=True、魔法系数 | '2025-26' 赛季硬编码 5 处、experience=2025 写死 | 单一常量源（CURRENT_SEASON/SEASONS_10 已建立）+ 新增代码审查项"硬编码检查" |
+| 4 | **静默失败吞数据缺口** | ESPN API 挂掉静默退出无告警（Q19） | fetch_month 静默返回空导致 2016-17 只入库 388 场 | 抓取后做**数量断言**（实际 vs 预期，verify Part A 已实现）+ 失败必须 warn + 汇总非零退出 |
+| 5 | **ID 命名空间混用** | fetch_rosters 把 ESPN athlete id 写进 nba_id | 32 行 ESPN id 残留 + bbref id 混入 + nba_game_id espn_ 前缀 | ID 统一规范（球员=NBA PERSON_ID、比赛=espn_ 前缀）+ 写入时格式校验 |
+| 6 | **无备份直接动库** | （历史上有 recover_from_binlog.py 说明曾丢过数据） | 对账两次误删 game_record，靠 ESPN 重建才恢复 | **动库前必 mysqldump**（一条命令）+ 所有写库脚本幂等可重跑 |
+| 7 | **ORM 与 DDL 漂移** | （未暴露） | player_data 唯一键 (player_id,season)、game_record 逐节比分列、uk_nba_game_id 均不在 ORM 中 | 模型与 init.sql 定期对账 + 建表用 CREATE TABLE IF NOT EXISTS + 显式唯一键 |
+| 8 | **反爬 TLS 指纹差异** | （未涉及） | bbref 只认 curl、okooo 只认浏览器、PST 都不认——同一台机器三种结论 | 按站点记录"可用的客户端"（CLAUDE.md 数据源节已有 bbref 条目，扩展为表格）+ 换客户端先测试再写脚本 |
+
+**防复发红线（写入 CLAUDE.md，每次会话自动加载）**：① 动库前 mysqldump ② 新数据源先测匹配率再入库 ③ 抓取后数量断言 ④ 禁止新硬编码（用 constants） ⑤ 新 ID 先定命名空间。
+
+## 十五、前端样式改版与数据修复（2026年8月14日）
+
+### 15.1 球员数据页问题集
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| 球员名白字白底不可见 | `$text-primary: #FFFFFF`（暗色主题变量）用在 Element Plus 默认白底表格上 | 表格内文字改用 `$text-dark` |
+| 命中率大 100 倍 | **双重乘法**：`toCamel` 里 `fg_percentage ×100` 转字符串后，`formatPct` 又 ×100（0.471 → 4710%） | 统一约定：百分比保持小数存储，显示时由 `formatPct` 乘一次 |
+| "没有三分命中率" | 误解——DB 有 `three_percentage` 字段（CLAUDE.md 的字段表写错了），是 100 倍 bug 让它显示成 3670% 像坏数据 | 修正 CLAUDE.md 字段表；随 100 倍 bug 一并修复 |
+| 位置筛选/球队筛选/关键词搜索无效 | Python `/data/players` **根本没实现**这些筛选参数（前端传了被 FastAPI 静默忽略） | Python 端新增 `team_id`/`keyword`/`positions`（逗号分隔 IN 查询）参数；前端筛选改"后卫 (PG,SG) / 前场 (SF,PF,C)"分组 |
+| 队标全部显示 NBA 兜底徽章 | Python `/data/players` 响应**不含 team_name**，前端映射为空 → 兜底 | 前端用 Java 球队列表按 `team_id` 补全 teamName/abbreviation（`teamMap` 查找，先加载球队再加载球员） |
+
+**位置数据真相（重要）**：`player.position` 列**没有真实数据**——412/889 人为空；477 个"有值"的是 `seed_realistic_data.py:214` 的 `random.choice(["PG","SG","SF","PF","C"])` **随机假值**。抓取脚本 `fetch_nba_data.py` 的 `commonallplayers` 接口不含位置字段，从未写入过真实位置。用户计划后续自行补数据，补之前位置显示与筛选不可信（已写入 CLAUDE.md）。
+
+### 15.2 球队数据页战绩全是 0
+
+**原因**：Python `/data/teams` 的战绩在**嵌套的 `season_data` 对象**里（`season_data.wins`），前端直接读顶层 `team.wins` → 全 0；净效率、节奏、场均得分同理全部显示 `-`。
+
+**修复**：重写球队数据页为**战绩榜**（按胜率降序：排名/球队/胜负/胜率/净效率/场均得分，行点击进详情页），数据映射改为读取 `season_data`；同步新建球队详情页 `/team/detail/:teamId`（头图 + 主客场战绩 + 17 项赛季数据 + 球员名单）。
+
+### 15.3 Python 服务运维与降级
+
+- **uvicorn 热重载卡死（Windows）**：修改 `app/api/data.py` 后 StatReload 打印 "Reloading..." 但新进程起不来（旧进程不释放端口），旧代码继续服务导致新参数不生效。排查：`py_compile` 语法通过 + 端口仅一个监听者。**解决：重启服务**。教训：Windows 下 Python 代码改动后若接口行为不变，先重启而不是等热重载。
+- **预测降级静默**：Java `TeamServiceImpl.predict`（`PlayerServiceImpl` 同）在 Python 不可用时 catch 异常返回 `degraded: true` 空壳数据（只有队名，无数值），前端误报"预测完成"。**修复**：4 个预测入口（比赛预测、球队预测、球员预测、数据页自动预测）检查 `degraded` 标志，弹出黄色警告"算法服务不可用，当前为降级数据"。
+
+### 15.4 Element Plus 2.6 el-select 样式全部失效
+
+**现象**：预测页定制样式后选择框始终是默认白底。
+
+**原因**：Element Plus 2.5+ 重构了 el-select 内部结构，输入容器从 `.el-input__wrapper` 变为 **`.el-select__wrapper`**；`scoped :deep(.el-input__wrapper)` 选择器全部打空。
+
+**修复**：改用 `.el-select__wrapper`（含 `.is-focused` 状态）、`.el-select__placeholder`、`.el-select__selected-item`。**约定**：项目中任何 el-select 定制样式都必须用新结构。
+
+### 15.5 数据刻度不一致（usage_rate）
+
+`/data/teams/{id}/roster` 的 `usage_rate` 是**百分数刻度**（18.7 = 18.7%），而 `fg_percentage` 等是小数刻度（0.616 = 61.6%）。若统一按小数 ×100 会再出 100 倍问题。修复：`formatVal` 增加 `pctRaw` 模式（原样加 %），`pct` 模式（×100 加 %）分开使用。
+
+### 15.6 今日前端新增（配套）
+
+- 队标体系：30 支球队官方 SVG 队标（NBA CDN 下载存 `src/assets/team-logos/`）+ 全局组件 `<TeamLogo>`（onerror 缩写徽章兜底）+ `constants/teams.js`（中英文队名→缩写映射、30 队官方主辅色）+ 全局布局类 `.team-cell`/`.matchup-vs`
+- 比赛预测页重做：对阵舞台（大队标 + 队色全局发散渲染 + 下划线透明选择器）、比分在 VS 两侧、双队色胜率条、三行两列数据网格、展开箭头、球员对位区（自动预测 + 展开更多）
+- 数据页（原"比赛详情页"）改名加宽（1000→1400px），球队图标可点击进球队详情
+
 ---
 
 *文档完成时间：2026年5月4日*
-*最近更新：2026年8月10日 — v2 数据门户重构、胜率算法重写、13 类运行时问题修复、Git 仓库初始化、代码审查与质量改进*
+*最近更新：2026年8月15日 — 10 赛季数据重建与回测体系（14.4-14.7）、赔率融合上线、模型重训、事故记录、前端样式改版（第15节）*

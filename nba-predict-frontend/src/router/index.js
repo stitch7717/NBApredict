@@ -16,7 +16,7 @@ const routes = [
         path: 'game/:gameId',
         name: 'GameDetail',
         component: () => import('@/views/game/detail.vue'),
-        meta: { title: '比赛详情' },
+        meta: { title: '数据页' },
       },
       {
         path: 'predict',
@@ -66,6 +66,12 @@ const routes = [
         name: 'TeamPredict',
         component: () => import('@/views/team/predict.vue'),
         meta: { title: '球队预测' },
+      },
+      {
+        path: 'team/detail/:teamId',
+        name: 'TeamDetail',
+        component: () => import('@/views/team/detail.vue'),
+        meta: { title: '球队详情' },
       },
       {
         path: 'series',

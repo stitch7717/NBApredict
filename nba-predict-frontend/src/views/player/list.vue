@@ -13,7 +13,12 @@
         <el-option label="C 中锋" value="C" />
       </el-select>
       <el-select v-model="teamId" placeholder="球队筛选" clearable filterable style="width:160px">
-        <el-option v-for="t in teamOptions" :key="t.teamId" :label="t.teamName" :value="t.teamId" />
+        <el-option v-for="t in teamOptions" :key="t.teamId" :label="t.teamName" :value="t.teamId">
+          <span class="team-cell">
+            <TeamLogo :abbr="t.abbreviation || ''" :size="20" />
+            <span>{{ t.teamName }}</span>
+          </span>
+        </el-option>
       </el-select>
       <el-button type="primary" @click="loadPlayers">
         <el-icon><Search /></el-icon>搜索
@@ -33,7 +38,14 @@
             <span class="neu-tag neu-tag--blue">{{ row.position }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="teamName" label="球队" width="130" />
+        <el-table-column prop="teamName" label="球队" width="130">
+          <template #default="{ row }">
+            <span class="team-cell">
+              <TeamLogo :abbr="teamAbbrOf(row.teamName)" :size="22" />
+              <span>{{ row.teamName || '-' }}</span>
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column prop="age" label="年龄" width="70" />
         <el-table-column prop="height" label="身高(cm)" width="100" />
         <el-table-column prop="allStarCount" label="全明星" width="80">
@@ -82,6 +94,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { playerApi, teamApi } from '@/api'
+import { teamAbbrOf } from '@/constants/teams'
 import { Search, TrendCharts } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -130,7 +143,7 @@ const goToPredict = (player) => {
 </script>
 
 <style lang="scss" scoped>
-.player-list-page { max-width: 1400px; }
+.player-list-page { max-width: 1400px; margin: 0 auto; }
 
 .player-name {
   font-weight: 600;

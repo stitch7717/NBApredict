@@ -195,13 +195,17 @@ const handlePredict = async () => {
   try {
     const res = await playerApi.predict({ ...form })
     result.value = res.data
-    ElMessage.success('预测完成')
+    if (res.data?.degraded) {
+      ElMessage.warning('算法服务不可用，当前为降级数据（仅基础信息，无预测数值）')
+    } else {
+      ElMessage.success('预测完成')
+    }
   } catch { ElMessage.error('预测失败') } finally { predicting.value = false }
 }
 </script>
 
 <style lang="scss" scoped>
-.player-predict-page { max-width: 1400px; }
+.player-predict-page { max-width: 1400px; margin: 0 auto; }
 
 .player-header {
   display: flex;

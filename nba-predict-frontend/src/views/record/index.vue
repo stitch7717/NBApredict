@@ -27,9 +27,16 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="playerName" label="球员/球队" width="160">
+        <el-table-column prop="playerName" label="球员/球队" width="200">
           <template #default="{ row }">
-            <span class="name-cell">{{ row.playerName || `${row.homeTeamName} vs ${row.awayTeamName}` }}</span>
+            <span v-if="row.predictType === 'TEAM'" class="team-cell">
+              <TeamLogo :abbr="teamAbbrOf(row.homeTeamName)" :size="20" />
+              <span>{{ row.homeTeamName }}</span>
+              <span class="matchup-vs">vs</span>
+              <TeamLogo :abbr="teamAbbrOf(row.awayTeamName)" :size="20" />
+              <span>{{ row.awayTeamName }}</span>
+            </span>
+            <span v-else class="name-cell">{{ row.playerName }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="scene" label="场景" width="100" />
@@ -89,6 +96,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { recordApi } from '@/api'
+import { teamAbbrOf } from '@/constants/teams'
 import { Search } from '@element-plus/icons-vue'
 
 const predictType = ref('')
@@ -124,7 +132,7 @@ const handleCalibrate = async (row) => {
 </script>
 
 <style lang="scss" scoped>
-.record-page { max-width: 1400px; }
+.record-page { max-width: 1400px; margin: 0 auto; }
 
 .name-cell { font-weight: 600; color: $text-primary; }
 

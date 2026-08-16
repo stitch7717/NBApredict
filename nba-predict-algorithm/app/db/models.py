@@ -183,6 +183,46 @@ class GameRecord(Base):
     total_score = Column(Integer)
     is_playoff = Column(Integer, default=0)
     status = Column(String(20), default="FINISHED")
+    home_q1_score = Column(Integer)
+    home_q2_score = Column(Integer)
+    home_q3_score = Column(Integer)
+    home_q4_score = Column(Integer)
+    away_q1_score = Column(Integer)
+    away_q2_score = Column(Integer)
+    away_q3_score = Column(Integer)
+    away_q4_score = Column(Integer)
+    overtime = Column(String(20))
+    playoff_round = Column(String(20))
+    series_id = Column(BigInteger)
+
+
+class PlayerRoster(Base):
+    __tablename__ = "player_roster"
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    player_id = Column(BigInteger)
+    team_id = Column(BigInteger)
+    season = Column(String(10))
+    position = Column(String(10))
+    jersey_number = Column(Integer)
+    height = Column(Float)
+    weight = Column(Float)
+    age = Column(Integer)
+    experience = Column(Integer)
+    games_played = Column(Integer)
+
+
+class InjuryRecord(Base):
+    __tablename__ = "injury_record"
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    player_id = Column(BigInteger)
+    team_id = Column(BigInteger)
+    season = Column(String(10))
+    injury_date = Column(Date)
+    return_date = Column(Date)
+    games_missed = Column(Integer)
+    body_part = Column(String(50))
+    description = Column(String(200))
+    source = Column(String(30))
 
 
 class BattleRecord(Base):

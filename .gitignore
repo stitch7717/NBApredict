@@ -49,3 +49,12 @@ htmlcov/
 # Node
 .npm/
 .cache/
+
+# 敏感凭证（NBA 会话 cookies，勿提交）
+nba-predict-algorithm/data/nba_session_cookies.json
+
+# 抓取缓存与原始数据
+nba-predict-algorithm/data/espn_events_cache.json
+nba-predict-algorithm/data/injuries.rda
+nba-predict-algorithm/data/kaggle_odds/
+nba-predict-algorithm/data/kaggle_teammisc/

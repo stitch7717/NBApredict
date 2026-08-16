@@ -238,7 +238,7 @@ const initChart = () => {
 </script>
 
 <style lang="scss" scoped>
-.odds-page { max-width: 1400px; }
+.odds-page { max-width: 1400px; margin: 0 auto; }
 
 .backtest-result { margin-top: 16px; padding-top: 16px; border-top: 1px solid $border-dark; }
 

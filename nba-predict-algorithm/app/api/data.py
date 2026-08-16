@@ -125,6 +125,9 @@ async def get_players(
     order: str = "desc",
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
+    team_id: Optional[int] = None,
+    keyword: Optional[str] = None,
+    positions: Optional[str] = None,
 ):
     from loguru import logger
     try:
@@ -139,13 +142,21 @@ async def get_players(
         if order not in ("asc", "desc"):
             order = "desc"
 
+        # 基础过滤条件（筛选参数由前端传入）
+        base_filters = [PlayerData.season == season, Player.status == 1]
+        if team_id:
+            base_filters.append(Player.team_id == team_id)
+        if keyword:
+            base_filters.append(Player.player_name.like(f"%{keyword}%"))
+        if positions:
+            pos_list = [p.strip().upper() for p in positions.split(",") if p.strip()]
+            if pos_list:
+                base_filters.append(Player.position.in_(pos_list))
+
         with SessionLocal() as db:
             query = db.query(Player, PlayerData).join(
                 PlayerData, Player.player_id == PlayerData.player_id
-            ).filter(
-                PlayerData.season == season,
-                Player.status == 1,
-            )
+            ).filter(*base_filters)
 
             sort_col = getattr(PlayerData, sort_by, PlayerData.points_per_game)
             if order == "desc":
@@ -157,10 +168,7 @@ async def get_players(
             # 重建查询避免 count() 修改原查询
             query2 = db.query(Player, PlayerData).join(
                 PlayerData, Player.player_id == PlayerData.player_id
-            ).filter(
-                PlayerData.season == season,
-                Player.status == 1,
-            )
+            ).filter(*base_filters)
             query2 = query2.order_by(sort_col.desc() if order == "desc" else sort_col.asc())
             items = query2.offset((page - 1) * limit).limit(limit).all()
 

@@ -331,5 +331,5 @@ const initRadarChart = () => {
 </script>
 
 <style lang="scss" scoped>
-.dashboard-page { max-width: 1400px; }
+.dashboard-page { max-width: 1400px; margin: 0 auto; }
 </style>

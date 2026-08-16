@@ -1,270 +1,317 @@
 <template>
   <div class="predict-page">
-    <h2 class="page-title">自由预测</h2>
+    <!-- 全局发散背景（fixed 铺满整个视口，不受页面容器限制） -->
+    <div class="page-glow" :style="sideBgStyle('home')"></div>
+    <div class="page-glow" :style="sideBgStyle('away')"></div>
 
-    <el-row :gutter="24">
-      <!-- 左侧 - 预测参数 -->
-      <el-col :span="10">
-        <div class="neu-card">
-          <div class="neu-card-header">
-            <span class="title">预测参数</span>
-          </div>
-
-          <el-form :model="form" label-width="70px">
-            <el-form-item label="主队" required>
-              <el-select
-                v-model="form.homeTeamId"
-                filterable
-                placeholder="选择主队"
-                style="width: 100%"
-                @change="onTeamChange"
-              >
-                <el-option
-                  v-for="t in teamOptions"
-                  :key="t.teamId"
-                  :label="t.teamName"
-                  :value="t.teamId"
-                  :disabled="t.teamId === form.awayTeamId"
-                />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="客队" required>
-              <el-select
-                v-model="form.awayTeamId"
-                filterable
-                placeholder="选择客队"
-                style="width: 100%"
-                @change="onTeamChange"
-              >
-                <el-option
-                  v-for="t in teamOptions"
-                  :key="t.teamId"
-                  :label="t.teamName"
-                  :value="t.teamId"
-                  :disabled="t.teamId === form.homeTeamId"
-                />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="场景">
-              <el-radio-group v-model="form.scene">
-                <el-radio-button label="常规赛">常规赛</el-radio-button>
-                <el-radio-button label="季后赛">季后赛</el-radio-button>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item>
-              <el-button
-                type="primary"
-                :loading="predicting"
-                style="width: 100%"
-                @click="handlePredict"
-              >
-                <el-icon><TrendCharts /></el-icon> 开始预测
-              </el-button>
-            </el-form-item>
-          </el-form>
+    <!-- ============ 对阵头部 ============ -->
+    <div class="duel-hero">
+      <!-- 主队侧 -->
+      <div class="hero-side">
+        <div v-if="homeTeamAbbr" class="duel-glow" :style="glowStyle('home')"></div>
+        <div class="hero-logo-wrap">
+          <TeamLogo
+            v-if="homeTeamAbbr"
+            class="hero-logo"
+            :abbr="homeTeamAbbr"
+            :size="332"
+          />
         </div>
-
-        <!-- 近期交锋 -->
-        <div
-          v-if="battleRecords.length"
-          class="neu-card animate-fade-in"
-          style="margin-top: 16px"
+        <!-- 队标旁小字：战绩 / 分区排名 -->
+        <div v-if="homeTeamAbbr" class="hero-meta">
+          <span class="hero-meta-text">{{ homeRecord }}</span>
+          <span class="hero-meta-text">{{ homeRank }}</span>
+        </div>
+        <el-select
+          v-model="form.homeTeamId"
+          filterable
+          placeholder="选择球队"
+          class="frost-select"
+          @change="onTeamChange('home')"
         >
-          <div class="neu-card-header">
-            <span class="title">近期交锋</span>
+          <el-option
+            v-for="t in teamOptions"
+            :key="t.teamId"
+            :label="t.teamName"
+            :value="t.teamId"
+            :disabled="t.teamId === form.awayTeamId"
+          >
+            <span class="team-cell">
+              <TeamLogo :abbr="t.abbreviation || ''" :size="20" />
+              <span>{{ t.teamName }}</span>
+            </span>
+          </el-option>
+        </el-select>
+      </div>
+
+      <!-- 中间 -->
+      <div class="hero-center">
+        <!-- 预测比分：数字在 VS 圆环两侧 -->
+        <div v-if="result" class="score-caption">预测比分</div>
+        <div class="vs-score-row">
+          <span v-if="result" class="score-num score-num--home animate-fade-in">{{ result.predictHomeScore ?? result.predict_home_score ?? 0 }}</span>
+          <span class="vs-ring">VS</span>
+          <span v-if="result" class="score-num score-num--away animate-fade-in">{{ result.predictAwayScore ?? result.predict_away_score ?? 0 }}</span>
+        </div>
+        <el-radio-group v-model="form.scene" size="small" class="scene-group">
+          <el-radio-button label="常规赛">常规赛</el-radio-button>
+          <el-radio-button label="季后赛">季后赛</el-radio-button>
+        </el-radio-group>
+        <el-button
+          type="primary"
+          :loading="predicting"
+          class="predict-main-btn"
+          @click="handlePredict"
+        >
+          <el-icon><TrendCharts /></el-icon> 开始预测
+        </el-button>
+      </div>
+
+      <!-- 客队侧 -->
+      <div class="hero-side">
+        <div v-if="awayTeamAbbr" class="duel-glow" :style="glowStyle('away')"></div>
+        <div class="hero-logo-wrap">
+          <TeamLogo
+            v-if="awayTeamAbbr"
+            class="hero-logo"
+            :abbr="awayTeamAbbr"
+            :size="332"
+          />
+        </div>
+        <div v-if="awayTeamAbbr" class="hero-meta">
+          <span class="hero-meta-text">{{ awayRecord }}</span>
+          <span class="hero-meta-text">{{ awayRank }}</span>
+        </div>
+        <el-select
+          v-model="form.awayTeamId"
+          filterable
+          placeholder="选择球队"
+          class="frost-select"
+          @change="onTeamChange('away')"
+        >
+          <el-option
+            v-for="t in teamOptions"
+            :key="t.teamId"
+            :label="t.teamName"
+            :value="t.teamId"
+            :disabled="t.teamId === form.homeTeamId"
+          >
+            <span class="team-cell">
+              <TeamLogo :abbr="t.abbreviation || ''" :size="20" />
+              <span>{{ t.teamName }}</span>
+            </span>
+          </el-option>
+        </el-select>
+      </div>
+    </div>
+
+    <!-- 胜率条（数据区第一行位置，左右各自队色） -->
+    <div v-if="result" class="winprob-row animate-fade-in">
+      <div class="winprob-labels">
+        <span class="winprob-label winprob-label--home" :style="{ color: homeColor }">{{ homePct }}</span>
+        <span class="winprob-label winprob-label--away" :style="{ color: awayColor }">{{ awayPct }}</span>
+      </div>
+      <div class="winprob-bar-custom">
+        <div class="winprob-fill" :style="{ width: homePct, background: homeColor }"></div>
+        <div class="winprob-fill" :style="{ width: awayPct, background: awayColor }"></div>
+      </div>
+    </div>
+
+    <!-- ============ 数据区（三行两列网格） ============ -->
+    <div v-if="form.homeTeamId && form.awayTeamId" class="data-zone">
+      <div class="data-col data-col--home">
+        <div v-for="item in basicRows" :key="item.label" class="data-item">
+          <span class="data-val mono-num" :class="item.homeCls">{{ formatVal(item.home, item.fmt) }}</span>
+          <span class="data-label">{{ item.label }}</span>
+        </div>
+      </div>
+      <div class="data-col data-col--away">
+        <div v-for="item in basicRows" :key="item.label" class="data-item">
+          <span class="data-val mono-num" :class="item.awayCls">{{ formatVal(item.away, item.fmt) }}</span>
+          <span class="data-label">{{ item.label }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 展开后数据同格式呈现；收起按钮在底部 -->
+    <div v-if="basicExpanded && form.homeTeamId && form.awayTeamId" class="data-zone animate-fade-in">
+      <div class="data-col data-col--home">
+        <div v-for="item in moreRows" :key="item.label" class="data-item">
+          <span class="data-val mono-num" :class="item.homeCls">{{ formatVal(item.home, item.fmt) }}</span>
+          <span class="data-label">{{ item.label }}</span>
+        </div>
+      </div>
+      <div class="data-col data-col--away">
+        <div v-for="item in moreRows" :key="item.label" class="data-item">
+          <span class="data-val mono-num" :class="item.awayCls">{{ formatVal(item.away, item.fmt) }}</span>
+          <span class="data-label">{{ item.label }}</span>
+        </div>
+      </div>
+    </div>
+    <div v-if="form.homeTeamId && form.awayTeamId" class="expand-toggle" @click="basicExpanded = !basicExpanded">
+      <el-icon class="toggle-icon" :class="{ 'toggle-icon--rotated': basicExpanded }"><ArrowDown /></el-icon>
+      <span>{{ basicExpanded ? '收起数据' : '展开更多数据' }}</span>
+    </div>
+
+    <!-- ============ 球员对位区（预测后出现） ============ -->
+    <div v-if="result" class="player-zone animate-fade-in">
+      <div class="player-zone-title">球员对位</div>
+      <div class="player-selects">
+        <el-select
+          v-model="form.homePlayerId"
+          filterable
+          clearable
+          placeholder="选择球员"
+          class="frost-select"
+          @change="resetComparison"
+        >
+          <el-option
+            v-for="p in homeRoster"
+            :key="p.playerId"
+            :label="p.playerName"
+            :value="p.playerId"
+          />
+        </el-select>
+        <span class="matchup-vs">VS</span>
+        <el-select
+          v-model="form.awayPlayerId"
+          filterable
+          clearable
+          placeholder="选择球员"
+          class="frost-select"
+          @change="resetComparison"
+        >
+          <el-option
+            v-for="p in awayRoster"
+            :key="p.playerId"
+            :label="p.playerName"
+            :value="p.playerId"
+          />
+        </el-select>
+      </div>
+
+      <!-- 球员数据（选择后出现） -->
+      <div v-if="form.homePlayerId && form.awayPlayerId" class="player-data">
+        <div class="player-head player-head--home">
+          <span class="player-name">{{ homePlayerResult?.playerName || '...' }}</span>
+          <span class="player-tags">
+            <span v-for="tag in homePlayerResult?.matchupTags || []" :key="tag" class="neu-tag neu-tag--blue">{{ tag }}</span>
+          </span>
+        </div>
+        <div class="player-head player-head--away">
+          <span class="player-name">{{ awayPlayerResult?.playerName || '...' }}</span>
+          <span class="player-tags">
+            <span v-for="tag in awayPlayerResult?.matchupTags || []" :key="tag" class="neu-tag neu-tag--red">{{ tag }}</span>
+          </span>
+        </div>
+
+        <div class="player-cols">
+          <div class="data-col data-col--home">
+            <div v-for="item in playerCoreRows" :key="item.label" class="data-item">
+              <span class="data-val mono-num">{{ formatVal(item.home, item.fmt) }}</span>
+              <span class="data-label">{{ item.label }}</span>
+            </div>
           </div>
-          <div class="battle-list">
-            <div
-              v-for="(b, i) in battleRecords"
-              :key="i"
-              class="battle-item"
-            >
-              <span class="battle-date">{{ b.gameDate || '-' }}</span>
-              <span class="battle-teams">{{ b.homeTeam }} {{ b.homeScore }} - {{ b.awayScore }} {{ b.awayTeam }}</span>
-              <span class="neu-tag neu-tag--gray">{{ b.result || '-' }}</span>
+          <div class="data-col data-col--away">
+            <div v-for="item in playerCoreRows" :key="item.label" class="data-item">
+              <span class="data-val mono-num">{{ formatVal(item.away, item.fmt) }}</span>
+              <span class="data-label">{{ item.label }}</span>
             </div>
           </div>
         </div>
-      </el-col>
 
-      <!-- 右侧 - 预测结果 -->
-      <el-col :span="14">
-        <div v-if="result" class="result-section animate-fade-in">
-          <!-- 胜率条 -->
-          <div class="neu-card">
-            <div class="neu-card-header">
-              <span class="title">胜率预测</span>
-              <span class="neu-tag" :class="(result.homeWinProb ?? result.home_win_prob ?? 0) >= 0.5 ? 'neu-tag--blue' : 'neu-tag--red'">
-                {{ (result.homeWinProb ?? result.home_win_prob ?? 0) >= 0.5 ? '主队占优' : '客队占优' }}
-              </span>
-            </div>
-            <div class="prob-row">
-              <span class="prob-label prob-label--home">{{ homeTeamName }}</span>
-              <el-progress
-                :percentage="Math.round((result.homeWinProb ?? result.home_win_prob ?? 0) * 100)"
-                :stroke-width="18"
-                class="prob-bar"
-              >
-                <span class="prob-text">{{ ((result.homeWinProb ?? result.home_win_prob ?? 0) * 100).toFixed(1) }}%</span>
-              </el-progress>
-              <span class="prob-label prob-label--away">{{ awayTeamName }}</span>
-            </div>
-            <div class="prob-row" style="margin-top: 4px">
-              <span class="prob-sub">{{ ((result.homeWinProb ?? result.home_win_prob ?? 0) * 100).toFixed(1) }}%</span>
-              <span class="prob-sub" style="text-align: right">{{ ((1 - (result.homeWinProb ?? result.home_win_prob ?? 0)) * 100).toFixed(1) }}%</span>
-            </div>
-          </div>
-
-          <!-- 比分预测 -->
-          <div class="neu-card" style="margin-top: 16px">
-            <div class="neu-card-header">
-              <span class="title">比分预测</span>
-            </div>
-            <div class="score-display">
-              <div class="team-score team-score--home">
-                <div class="score-label">{{ homeTeamName }}</div>
-                <div class="score-value">{{ (result.predictHomeScore ?? result.predict_home_score ?? 0) }}</div>
-                <div class="score-sub">主队得分</div>
-              </div>
-              <div class="vs-badge">VS</div>
-              <div class="team-score team-score--away">
-                <div class="score-label">{{ awayTeamName }}</div>
-                <div class="score-value">{{ (result.predictAwayScore ?? result.predict_away_score ?? 0) }}</div>
-                <div class="score-sub">客队得分</div>
-              </div>
-            </div>
-            <div class="grid-3">
-              <div class="summary-stat">
-                <div class="summary-label">预测总分</div>
-                <div class="summary-value">{{ (result.predictTotalScore ?? result.predict_total_score ?? 0) }}</div>
-              </div>
-              <div class="summary-stat">
-                <div class="summary-label">预测分差</div>
-                <div
-                  class="summary-value"
-                  :class="(result.predictScoreDiff ?? result.predict_score_diff ?? 0) > 0 ? 'summary-value--positive' : 'summary-value--negative'"
-                >
-                  {{ (result.predictScoreDiff ?? result.predict_score_diff ?? 0) > 0 ? '+' : '' }}{{ (result.predictScoreDiff ?? result.predict_score_diff ?? 0) }}
-                </div>
-              </div>
-              <div class="summary-stat">
-                <div class="summary-label">预测胜负</div>
-                <div
-                  class="summary-value"
-                  :class="(result.predictScoreDiff ?? result.predict_score_diff ?? 0) > 0 ? 'summary-value--positive' : 'summary-value--negative'"
-                >
-                  {{ (result.predictScoreDiff ?? result.predict_score_diff ?? 0) > 0 ? '主胜' : (result.predictScoreDiff ?? result.predict_score_diff ?? 0) === 0 ? '平局' : '客胜' }}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 球员表现预测 -->
-          <div class="neu-card" style="margin-top: 16px">
-            <div class="neu-card-header">
-              <span class="title">球员表现预测</span>
-            </div>
-            <el-row :gutter="16">
-              <!-- 主队球员 -->
-              <el-col :span="12">
-                <div class="player-section-label">主队球员表现</div>
-                <div v-if="homePlayersLoading" class="loading-row">
-                  <div class="loading-spinner" style="width: 24px; height: 24px"></div>
-                  <span class="loading-text" style="margin-left: 8px">加载中...</span>
-                </div>
-                <div v-else-if="homePlayers.length === 0" class="empty-hint">暂无球员数据</div>
-                <div v-else class="player-cards">
-                  <div
-                    v-for="p in homePlayers"
-                    :key="p.playerId"
-                    class="player-card"
-                  >
-                    <div class="player-card-header">
-                      <span class="player-name">{{ p.playerName || '球员 #' + p.playerId }}</span>
-                      <span class="neu-tag neu-tag--blue">{{ p.position || '-' }}</span>
-                    </div>
-                    <div class="player-prediction">
-                      <span class="pred-label">预测得分</span>
-                      <span class="pred-range">
-                        <span class="pred-low">{{ p.predLow || '-' }}</span>
-                        <span class="pred-sep">-</span>
-                        <span class="pred-mid">{{ p.predMid || '-' }}</span>
-                        <span class="pred-sep">-</span>
-                        <span class="pred-high">{{ p.predHigh || '-' }}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </el-col>
-              <!-- 客队球员 -->
-              <el-col :span="12">
-                <div class="player-section-label">客队球员表现</div>
-                <div v-if="awayPlayersLoading" class="loading-row">
-                  <div class="loading-spinner" style="width: 24px; height: 24px"></div>
-                  <span class="loading-text" style="margin-left: 8px">加载中...</span>
-                </div>
-                <div v-else-if="awayPlayers.length === 0" class="empty-hint">暂无球员数据</div>
-                <div v-else class="player-cards">
-                  <div
-                    v-for="p in awayPlayers"
-                    :key="p.playerId"
-                    class="player-card"
-                  >
-                    <div class="player-card-header">
-                      <span class="player-name">{{ p.playerName || '球员 #' + p.playerId }}</span>
-                      <span class="neu-tag neu-tag--red">{{ p.position || '-' }}</span>
-                    </div>
-                    <div class="player-prediction">
-                      <span class="pred-label">预测得分</span>
-                      <span class="pred-range">
-                        <span class="pred-low">{{ p.predLow || '-' }}</span>
-                        <span class="pred-sep">-</span>
-                        <span class="pred-mid">{{ p.predMid || '-' }}</span>
-                        <span class="pred-sep">-</span>
-                        <span class="pred-high">{{ p.predHigh || '-' }}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </el-col>
-            </el-row>
-          </div>
+        <div class="expand-toggle" @click="playerExpanded = !playerExpanded">
+          <el-icon class="toggle-icon" :class="{ 'toggle-icon--rotated': playerExpanded }"><ArrowDown /></el-icon>
+          <span>{{ playerExpanded ? '收起球员数据' : '展开更多球员数据' }}</span>
         </div>
 
-        <!-- 空状态 -->
-        <div v-else class="neu-card">
-          <div class="empty-state">
-            <el-icon class="empty-icon"><Trophy /></el-icon>
-            <div class="empty-title">选择主客队开始预测</div>
-            <div class="empty-desc">在左侧选择主队和客队，点击预测按钮查看比分和球员表现预测</div>
+        <div v-if="playerExpanded" class="animate-fade-in">
+          <div class="player-cols">
+            <div class="data-col data-col--home">
+              <div v-for="item in playerMoreRows" :key="item.label" class="data-item">
+                <span class="data-val mono-num">{{ formatVal(item.home, item.fmt) }}</span>
+                <span class="data-label">{{ item.label }}</span>
+              </div>
+            </div>
+            <div class="data-col data-col--away">
+              <div v-for="item in playerMoreRows" :key="item.label" class="data-item">
+                <span class="data-val mono-num">{{ formatVal(item.away, item.fmt) }}</span>
+                <span class="data-label">{{ item.label }}</span>
+              </div>
+            </div>
           </div>
+
+          <el-table :data="rangeRows" stripe style="width: 100%; margin-top: 16px">
+            <el-table-column prop="player" label="球员" min-width="140" />
+            <el-table-column prop="low" label="拉胯区间" width="110" align="center">
+              <template #default="{ row }"><span class="mono-num text-negative">{{ row.low }}</span></template>
+            </el-table-column>
+            <el-table-column prop="mid" label="常规区间" width="110" align="center">
+              <template #default="{ row }"><span class="mono-num">{{ row.mid }}</span></template>
+            </el-table-column>
+            <el-table-column prop="high" label="爆发区间" width="110" align="center">
+              <template #default="{ row }"><span class="mono-num text-positive">{{ row.high }}</span></template>
+            </el-table-column>
+            <el-table-column prop="fgPct" label="预测命中率" width="110" align="center">
+              <template #default="{ row }"><span class="mono-num">{{ row.fgPct }}</span></template>
+            </el-table-column>
+          </el-table>
         </div>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
+
+    <!-- ============ 近期交锋 ============ -->
+    <div v-if="battleRecords.length" class="neu-card animate-fade-in" style="margin-top: 24px">
+      <div class="neu-card-header">
+        <span class="title">近期交锋</span>
+      </div>
+      <div class="battle-list">
+        <div v-for="(b, i) in battleRecords" :key="i" class="battle-item">
+          <span class="battle-date">{{ b.gameDate || '-' }}</span>
+          <span class="battle-teams">
+            <TeamLogo :abbr="teamAbbrOf(b.homeTeam)" :size="16" />
+            {{ b.homeTeam }} {{ b.homeScore }} - {{ b.awayScore }} {{ b.awayTeam }}
+            <TeamLogo :abbr="teamAbbrOf(b.awayTeam)" :size="16" />
+          </span>
+          <span class="neu-tag neu-tag--gray">{{ b.result || '-' }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Trophy, TrendCharts } from '@element-plus/icons-vue'
+import { TrendCharts, ArrowDown } from '@element-plus/icons-vue'
 import { teamApi, playerApi, dataApi } from '@/api'
+import { teamAbbrOf, teamPrimaryColor } from '@/constants/teams'
+import { CURRENT_SEASON } from '@/constants'
+
+const route = useRoute()
 
 const form = reactive({
   homeTeamId: null,
   awayTeamId: null,
+  homePlayerId: null,
+  awayPlayerId: null,
   scene: '常规赛',
 })
 
 const teamOptions = ref([])
+const teamRecords = ref({})
+const teamRanks = ref({})
+const homeRoster = ref([])
+const awayRoster = ref([])
 const predicting = ref(false)
 const result = ref(null)
 const battleRecords = ref([])
+const basicExpanded = ref(false)
+const playerExpanded = ref(false)
 
-const homePlayers = ref([])
-const awayPlayers = ref([])
-const homePlayersLoading = ref(false)
-const awayPlayersLoading = ref(false)
+const homePlayerResult = ref(null)
+const awayPlayerResult = ref(null)
 
 const homeTeamName = computed(() => {
   const t = teamOptions.value.find((t) => t.teamId === form.homeTeamId)
@@ -276,6 +323,187 @@ const awayTeamName = computed(() => {
   return t ? t.teamName : '客队'
 })
 
+const homeTeamAbbr = computed(() => teamOptions.value.find((t) => t.teamId === form.homeTeamId)?.abbreviation || '')
+const awayTeamAbbr = computed(() => teamOptions.value.find((t) => t.teamId === form.awayTeamId)?.abbreviation || '')
+
+// 十六进制色 → rgba
+const hexA = (hex, alpha) => {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+// 发散式背景：队色晕染约占页面 70%，无硬边界
+const sideBgStyle = (side) => {
+  const abbr = side === 'home' ? homeTeamAbbr.value : awayTeamAbbr.value
+  const color = abbr ? teamPrimaryColor(abbr) : '#3A3A3A'
+  const pos = side === 'home' ? '18% 10%' : '82% 10%'
+  return {
+    background: `radial-gradient(ellipse 95% 105% at ${pos}, ${hexA(color, 0.45)} 0%, ${hexA(color, 0.22)} 50%, transparent 78%)`,
+  }
+}
+
+// 队标后的大号柔光
+const glowStyle = (side) => {
+  const abbr = side === 'home' ? homeTeamAbbr.value : awayTeamAbbr.value
+  const color = teamPrimaryColor(abbr)
+  return {
+    background: `radial-gradient(circle, ${hexA(color, 0.5)}, transparent 65%)`,
+  }
+}
+
+// 战绩 / 分区排名
+const homeTeamStats = computed(() => teamRecords.value[form.homeTeamId] || null)
+const awayTeamStats = computed(() => teamRecords.value[form.awayTeamId] || null)
+
+const homeRecord = computed(() => {
+  const s = homeTeamStats.value
+  if (!s) return ''
+  return `${s.wins}-${s.losses} · ${(s.winPct * 100).toFixed(1)}%`
+})
+
+const awayRecord = computed(() => {
+  const s = awayTeamStats.value
+  if (!s) return ''
+  return `${s.wins}-${s.losses} · ${(s.winPct * 100).toFixed(1)}%`
+})
+
+const homeRank = computed(() => {
+  const r = teamRanks.value[form.homeTeamId]
+  return r ? `分区第${r}` : ''
+})
+
+const awayRank = computed(() => {
+  const r = teamRanks.value[form.awayTeamId]
+  return r ? `分区第${r}` : ''
+})
+
+// 球员名单映射（season_data 嵌套）
+const toRosterCamel = (p) => {
+  const s = p.season_data || {}
+  return {
+    playerId: p.player_id,
+    playerName: p.player_name,
+    position: p.position,
+    pointsPerGame: s.points_per_game ?? null,
+    reboundsPerGame: s.rebounds_per_game ?? null,
+    assistsPerGame: s.assists_per_game ?? null,
+    fgPct: s.fg_percentage ?? null,
+    threePct: s.three_percentage ?? null,
+    ftPct: s.ft_percentage ?? null,
+    trueShootingPct: s.true_shooting_pct ?? null,
+    usageRate: s.usage_rate ?? null,
+  }
+}
+
+const homePlayer = computed(() => homeRoster.value.find((p) => p.playerId === form.homePlayerId) || null)
+const awayPlayer = computed(() => awayRoster.value.find((p) => p.playerId === form.awayPlayerId) || null)
+
+// 基本数据（每侧 6 项，先展示）
+const basicRows = computed(() => {
+  const h = homeTeamStats.value
+  const a = awayTeamStats.value
+  if (!h || !a) return []
+  const signedCls = (v) => (v ?? 0) >= 0 ? 'text-positive' : 'text-negative'
+  return [
+    { label: '场均得分', home: h.pointsPerGame, away: a.pointsPerGame },
+    { label: '场均失分', home: h.oppPointsPerGame, away: a.oppPointsPerGame },
+    {
+      label: '净效率',
+      home: h.netRating,
+      away: a.netRating,
+      homeCls: signedCls(h.netRating),
+      awayCls: signedCls(a.netRating),
+    },
+    { label: '场均篮板', home: h.reboundsPerGame, away: a.reboundsPerGame },
+    { label: '场均助攻', home: h.assistsPerGame, away: a.assistsPerGame },
+    { label: '近10场胜率', home: h.recentWinRate, away: a.recentWinRate, fmt: 'pct' },
+  ]
+})
+
+// 展开后的更多数据
+const moreRows = computed(() => {
+  const h = homeTeamStats.value
+  const a = awayTeamStats.value
+  if (!h || !a) return []
+  const signedCls = (v) => (v ?? 0) >= 0 ? 'text-positive' : 'text-negative'
+  return [
+    { label: '进攻效率', home: h.offensiveRating, away: a.offensiveRating },
+    { label: '防守效率', home: h.defensiveRating, away: a.defensiveRating },
+    { label: '节奏', home: h.pace, away: a.pace },
+    { label: '场均篮板', home: h.reboundsPerGame, away: a.reboundsPerGame },
+    { label: '场均助攻', home: h.assistsPerGame, away: a.assistsPerGame },
+    { label: '命中率', home: h.fgPct, away: a.fgPct, fmt: 'pct' },
+    { label: '三分命中率', home: h.threePct, away: a.threePct, fmt: 'pct' },
+    { label: '主场战绩', home: h.homeRecord, away: a.homeRecord },
+    { label: '客场战绩', home: h.awayRecord, away: a.awayRecord },
+  ]
+})
+
+// 球员核心/更多数据行
+const playerCoreRows = computed(() => {
+  const h = homePlayer.value
+  const a = awayPlayer.value
+  if (!h || !a) return []
+  return [
+    { label: '场均得分', home: h.pointsPerGame, away: a.pointsPerGame },
+    { label: '场均篮板', home: h.reboundsPerGame, away: a.reboundsPerGame },
+    { label: '场均助攻', home: h.assistsPerGame, away: a.assistsPerGame },
+    { label: '命中率', home: h.fgPct, away: a.fgPct, fmt: 'pct' },
+    { label: '三分命中率', home: h.threePct, away: a.threePct, fmt: 'pct' },
+    { label: '常规区间预测', home: homePlayerResult.value?.pointsMid ?? null, away: awayPlayerResult.value?.pointsMid ?? null },
+  ]
+})
+
+const playerMoreRows = computed(() => {
+  const h = homePlayer.value
+  const a = awayPlayer.value
+  if (!h || !a) return []
+  return [
+    { label: '罚球命中率', home: h.ftPct, away: a.ftPct, fmt: 'pct' },
+    { label: '真实命中率', home: h.trueShootingPct, away: a.trueShootingPct, fmt: 'pct' },
+    { label: '使用率', home: h.usageRate, away: a.usageRate, fmt: 'pctRaw' },
+  ]
+})
+
+const homePct = computed(() => ((result.value?.homeWinProb ?? result.value?.home_win_prob ?? 0) * 100).toFixed(1) + '%')
+const awayPct = computed(() => ((1 - (result.value?.homeWinProb ?? result.value?.home_win_prob ?? 0)) * 100).toFixed(1) + '%')
+const homeColor = computed(() => teamPrimaryColor(homeTeamAbbr.value))
+const awayColor = computed(() => teamPrimaryColor(awayTeamAbbr.value))
+
+const rangeRows = computed(() => {
+  const rows = []
+  if (homePlayerResult.value) {
+    rows.push({
+      player: homePlayerResult.value.playerName,
+      low: homePlayerResult.value.pointsLow ?? '-',
+      mid: homePlayerResult.value.pointsMid ?? '-',
+      high: homePlayerResult.value.pointsHigh ?? '-',
+      fgPct: homePlayerResult.value.fgPct != null ? (homePlayerResult.value.fgPct * 100).toFixed(1) + '%' : '-',
+    })
+  }
+  if (awayPlayerResult.value) {
+    rows.push({
+      player: awayPlayerResult.value.playerName,
+      low: awayPlayerResult.value.pointsLow ?? '-',
+      mid: awayPlayerResult.value.pointsMid ?? '-',
+      high: awayPlayerResult.value.pointsHigh ?? '-',
+      fgPct: awayPlayerResult.value.fgPct != null ? (awayPlayerResult.value.fgPct * 100).toFixed(1) + '%' : '-',
+    })
+  }
+  return rows
+})
+
+const formatVal = (val, fmt) => {
+  if (val == null) return '-'
+  if (fmt === 'pct') return (Number(val) * 100).toFixed(1) + '%'
+  if (fmt === 'pctRaw') return Number(val).toFixed(1) + '%'
+  const n = Number(val)
+  return Number.isInteger(n) ? String(n) : n.toFixed(1)
+}
+
 onMounted(async () => {
   try {
     const res = await teamApi.getList({ page: 1, size: 30 })
@@ -283,14 +511,107 @@ onMounted(async () => {
   } catch (e) {
     console.error(e)
   }
+  await loadTeamRecords()
+  // 支持从其他页面带主队进入（如球队详情页「预测」按钮）
+  const queryHomeId = Number(route.query.homeTeamId)
+  if (queryHomeId && teamOptions.value.some((t) => t.teamId === queryHomeId)) {
+    form.homeTeamId = queryHomeId
+    loadRoster('home')
+  }
 })
 
-const onTeamChange = () => {
-  result.value = null
-  battleRecords.value = []
-  homePlayers.value = []
-  awayPlayers.value = []
+// 加载 30 队战绩并计算分区排名
+const loadTeamRecords = async () => {
+  try {
+    const res = await dataApi.getTeams(CURRENT_SEASON)
+    const list = Array.isArray(res.data) ? res.data : res.data?.teams || res.data?.records || []
+    const map = {}
+    for (const t of list) {
+      const s = t.season_data || {}
+      map[t.team_id] = {
+        wins: s.wins ?? 0,
+        losses: s.losses ?? 0,
+        winPct: s.win_percentage ?? 0,
+        pointsPerGame: s.points_per_game ?? null,
+        oppPointsPerGame: s.opponent_points ?? null,
+        netRating: s.net_rating ?? null,
+        recentWinRate: s.recent_win_rate ?? null,
+        offensiveRating: s.offensive_rating ?? null,
+        defensiveRating: s.defensive_rating ?? null,
+        pace: s.pace ?? null,
+        reboundsPerGame: s.rebounds_per_game ?? null,
+        assistsPerGame: s.assists_per_game ?? null,
+        fgPct: s.fg_percentage ?? null,
+        threePct: s.three_percentage ?? null,
+        homeRecord: `${s.home_wins ?? 0}-${s.home_losses ?? 0}`,
+        awayRecord: `${s.away_wins ?? 0}-${s.away_losses ?? 0}`,
+        conference: t.conference,
+      }
+    }
+    teamRecords.value = map
+    // 分区内按胜率排名
+    const ranks = {}
+    for (const conf of ['East', 'West']) {
+      const listConf = Object.values(map).filter((x) => x.conference === conf)
+      listConf.sort((a, b) => b.winPct - a.winPct)
+      listConf.forEach((_, i) => {
+        const key = Object.keys(map).find((k) => map[k] === listConf[i])
+        if (key != null) ranks[key] = i + 1
+      })
+    }
+    teamRanks.value = ranks
+  } catch (e) {
+    console.error('加载球队战绩失败', e)
+  }
 }
+
+const onTeamChange = (side) => {
+  if (side === 'home') {
+    form.homePlayerId = null
+  } else {
+    form.awayPlayerId = null
+  }
+  resetComparison()
+  loadRoster(side)
+}
+
+const loadRoster = async (side) => {
+  const teamId = side === 'home' ? form.homeTeamId : form.awayTeamId
+  if (!teamId) {
+    if (side === 'home') homeRoster.value = []
+    else awayRoster.value = []
+    return
+  }
+  try {
+    const res = await dataApi.getTeamRoster(teamId, CURRENT_SEASON)
+    const data = res.data || res
+    const list = Array.isArray(data) ? data : data.players || data.roster || []
+    const mapped = list.map(toRosterCamel).sort((a, b) => (b.pointsPerGame ?? 0) - (a.pointsPerGame ?? 0))
+    if (side === 'home') homeRoster.value = mapped
+    else awayRoster.value = mapped
+  } catch (e) {
+    console.error('加载球员名单失败', e)
+  }
+}
+
+const resetComparison = () => {
+  homePlayerResult.value = null
+  awayPlayerResult.value = null
+  playerExpanded.value = false
+}
+
+// 两侧都选了球员 → 自动对位预测
+watch(
+  () => [form.homePlayerId, form.awayPlayerId],
+  async ([homeId, awayId]) => {
+    if (homeId && awayId && result.value) {
+      await predictPlayer('home')
+      await predictPlayer('away')
+    } else {
+      resetComparison()
+    }
+  },
+)
 
 const handlePredict = async () => {
   if (!form.homeTeamId || !form.awayTeamId) {
@@ -302,6 +623,9 @@ const handlePredict = async () => {
     return
   }
   predicting.value = true
+  result.value = null
+  battleRecords.value = []
+  resetComparison()
   try {
     const res = await teamApi.predict({
       homeTeamId: form.homeTeamId,
@@ -310,14 +634,39 @@ const handlePredict = async () => {
       useOdds: false,
     })
     result.value = res.data
-    ElMessage.success('预测完成')
-
-    loadPlayerPredictions()
+    if (res.data?.degraded) {
+      ElMessage.warning('算法服务不可用，当前为降级数据（仅队名，无预测数值）')
+    } else {
+      ElMessage.success('预测完成')
+    }
     loadBattleRecords()
-  } catch {
+  } catch (e) {
+    console.error('预测失败', e)
     ElMessage.error('预测失败')
   } finally {
     predicting.value = false
+  }
+}
+
+const predictPlayer = async (side) => {
+  const isHome = side === 'home'
+  const playerId = isHome ? form.homePlayerId : form.awayPlayerId
+  const opponentId = isHome ? form.awayPlayerId : form.homePlayerId
+  try {
+    const res = await playerApi.predict({
+      playerId,
+      opponentPlayerId: opponentId,
+      scene: form.scene,
+      homeAway: isHome ? 'home' : 'away',
+    })
+    if (isHome) homePlayerResult.value = res.data
+    else awayPlayerResult.value = res.data
+    if (res.data?.degraded) {
+      ElMessage.warning(`${isHome ? '主队' : '客队'}球员预测：算法服务不可用，当前为降级数据`)
+    }
+  } catch (e) {
+    console.error('球员预测失败', e)
+    ElMessage.error(`${isHome ? '主队' : '客队'}球员预测失败`)
   }
 }
 
@@ -326,81 +675,12 @@ const loadBattleRecords = async () => {
     const res = await teamApi.getBattleRecord({
       team1Id: form.homeTeamId,
       team2Id: form.awayTeamId,
+      season: CURRENT_SEASON,
     })
-    battleRecords.value = res.data?.records || res.data || []
-  } catch {
-    // 非关键接口，静默失败
-  }
-}
-
-const loadPlayerPredictions = async () => {
-  homePlayersLoading.value = true
-  awayPlayersLoading.value = true
-  try {
-    const [homeRosterRes, awayRosterRes] = await Promise.allSettled([
-      dataApi.getTeamRoster(form.homeTeamId),
-      dataApi.getTeamRoster(form.awayTeamId),
-    ])
-
-    if (homeRosterRes.status === 'fulfilled' && homeRosterRes.value?.data) {
-      const roster = Array.isArray(homeRosterRes.value.data)
-        ? homeRosterRes.value.data
-        : homeRosterRes.value.data.players || []
-      homePlayers.value = roster.map((p) => ({
-        ...p,
-        playerId: p.playerId || p.player_id || p.id,
-        playerName: p.playerName || p.player_name || p.name,
-        pointsPerGame: p.pointsPerGame || p.points_per_game || p.season_data?.points_per_game,
-      }))
-      await predictPlayers(homePlayers.value, 'home')
-    }
-
-    if (awayRosterRes.status === 'fulfilled' && awayRosterRes.value?.data) {
-      const roster = Array.isArray(awayRosterRes.value.data)
-        ? awayRosterRes.value.data
-        : awayRosterRes.value.data.players || []
-      awayPlayers.value = roster.map((p) => ({
-        ...p,
-        playerId: p.playerId || p.player_id || p.id,
-        playerName: p.playerName || p.player_name || p.name,
-        pointsPerGame: p.pointsPerGame || p.points_per_game || p.season_data?.points_per_game,
-      }))
-      await predictPlayers(awayPlayers.value, 'away')
-    }
+    battleRecords.value = res.data?.battle_records || res.data?.records || []
   } catch (e) {
-    console.error(e)
-  } finally {
-    homePlayersLoading.value = false
-    awayPlayersLoading.value = false
-  }
-}
-
-const predictPlayers = async (players, side) => {
-  if (!players.length) return
-  const target = side === 'home' ? homePlayers : awayPlayers
-  try {
-    const predictions = await Promise.allSettled(
-      players.slice(0, 8).map((p) =>
-        playerApi.predict({ playerId: p.playerId }).then((res) => ({
-          playerId: p.playerId,
-          ...res.data,
-        }))
-      )
-    )
-    const predMap = {}
-    predictions.forEach((r) => {
-      if (r.status === 'fulfilled') {
-        predMap[r.value.playerId] = r.value
-      }
-    })
-    target.value = target.value.map((p) => ({
-      ...p,
-      predLow: predMap[p.playerId]?.predLow ?? '-',
-      predMid: predMap[p.playerId]?.predMid ?? '-',
-      predHigh: predMap[p.playerId]?.predHigh ?? '-',
-    }))
-  } catch {
-    // 静默处理
+    console.error('加载近期交锋失败', e)
+    battleRecords.value = []
   }
 }
 </script>
@@ -408,273 +688,399 @@ const predictPlayers = async (players, side) => {
 <style lang="scss" scoped>
 .predict-page {
   max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: 140px;
 }
 
-.result-section {
+// ============ 全局发散背景 ============
+.page-glow {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+// ============ 对阵头部 ============
+.duel-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 36px;
+  padding-top: 0;
+}
+
+.hero-side {
+  flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0;
-}
-
-// 胜率条
-.prob-row {
-  display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 16px;
-  padding: 0 8px;
+  padding: 0 28px 16px;
+  min-height: 390px;
 }
 
-.prob-label {
-  font-size: 14px;
-  font-weight: 600;
-  flex-shrink: 0;
-  min-width: 0;
-
-  &--home {
-    color: $color-nba-blue;
-  }
-
-  &--away {
-    color: $color-nba-red;
-  }
+.duel-glow {
+  position: absolute;
+  top: 32%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  filter: blur(36px);
+  pointer-events: none;
+  z-index: 0;
 }
 
-.prob-bar {
-  flex: 1;
-
-  :deep(.el-progress-bar__outer) {
-    background: $border-light;
-    border-radius: $radius-full;
-  }
-
-  :deep(.el-progress-bar__inner) {
-    background: linear-gradient(90deg, $color-nba-blue, $text-muted 50%, $color-nba-red);
-    border-radius: $radius-full;
-  }
-
-  :deep(.el-progress__text) {
-    color: $text-primary;
-    font-weight: 600;
-  }
-}
-
-.prob-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: $text-primary;
-}
-
-.prob-sub {
-  flex: 1;
-  font-size: 12px;
-  color: $text-muted;
-}
-
-// 比分展示
-.score-display {
+.hero-logo-wrap {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 48px;
-  padding: 32px 0;
+  height: 268px;
 }
 
-.team-score {
-  text-align: center;
+.hero-logo {
+  filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.55));
+}
 
-  .score-label {
-    font-size: 16px;
-    color: $text-secondary;
-    margin-bottom: 8px;
+.hero-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+
+  .hero-meta-text {
+    font-size: 12px;
     font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+    letter-spacing: 0.5px;
   }
+}
 
-  .score-value {
-    font-size: 56px;
+.hero-center {
+  flex-shrink: 0;
+  width: 330px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+// 比分数字分列 VS 圆环两侧，大小与圆环相当
+.vs-score-row {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+
+  .score-num {
+    font-size: 58px;
     font-weight: 800;
     line-height: 1;
     font-variant-numeric: tabular-nums;
+
+    &--home { color: $color-nba-blue; }
+    &--away { color: $color-nba-red; }
+  }
+}
+
+.score-caption {
+  font-size: 11px;
+  color: $text-muted;
+  letter-spacing: 2px;
+  margin-bottom: -10px;
+}
+
+.vs-ring {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 1px solid $border-subtle;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: $text-secondary;
+  background: radial-gradient(circle at 32% 30%, $bg-elevated, $bg-card);
+  box-shadow: $neu-raised;
+}
+
+.predict-main-btn {
+  width: 180px;
+  height: 40px;
+}
+
+.scene-group {
+  :deep(.el-radio-button__inner) {
+    padding: 9px 22px;
+    font-size: 13px;
+  }
+}
+
+// 下划线式透明选择器（Element Plus 2.6 的 el-select 结构为 .el-select__wrapper）
+.frost-select {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 260px;
+
+  :deep(.el-select__wrapper) {
+    background: transparent;
+    box-shadow: none !important;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 4px 0;
+    min-height: 38px;
+    transition: border-color $transition-fast;
   }
 
-  .score-sub {
+  :deep(.el-select__wrapper.is-focused) {
+    border-bottom-color: rgba(255, 255, 255, 0.5);
+  }
+
+  :deep(.el-select__placeholder) {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  :deep(.el-select__selected-item) {
+    width: 100%;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  }
+}
+
+// ============ 数据区（左右两列往下） ============
+.data-zone {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 10%;
+  margin-top: 12px;
+  padding: 0 10%;
+}
+
+.data-col {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 20px;
+
+  &--home .data-item {
+    align-items: flex-start;
+  }
+
+  &--away .data-item {
+    align-items: flex-end;
+  }
+}
+
+.data-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .data-val {
+    font-size: 26px;
+    font-weight: 700;
+    color: $text-primary;
+    line-height: 1;
+  }
+
+  .data-label {
     font-size: 12px;
     color: $text-muted;
-    margin-top: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  }
+}
+
+// 胜率条（数据区第一行位置；宽度小于两侧数据间隔，条左右各自队色）
+.winprob-row {
+  position: relative;
+  z-index: 1;
+  width: 28%;
+  min-width: 76px;
+  margin: 10px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .winprob-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 700;
   }
 
-  &--home .score-value {
+  .winprob-bar-custom {
+    display: flex;
+    width: 100%;
+    height: 16px;
+    border-radius: $radius-full;
+    overflow: hidden;
+    background: $border-light;
+
+    .winprob-fill {
+      height: 100%;
+      transition: width 0.4s ease;
+    }
+  }
+}
+
+// 展开箭头
+.expand-toggle {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 10px;
+  font-size: 13px;
+  color: $text-secondary;
+  cursor: pointer;
+  user-select: none;
+  transition: color $transition-fast;
+
+  &:hover {
     color: $color-nba-blue;
   }
 
-  &--away .score-value {
-    color: $color-nba-red;
+  .toggle-icon {
+    transition: transform $transition-fast;
+
+    &--rotated {
+      transform: rotate(180deg);
+    }
   }
 }
 
-.vs-badge {
-  font-size: 20px;
-  font-weight: 800;
-  color: $text-muted;
-  padding: 12px 16px;
-  border-radius: $radius-full;
-  background: $bg-elevated;
-  border: 1px solid $border-dark;
+// ============ 球员对位区 ============
+.player-zone {
+  position: relative;
+  z-index: 1;
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px dashed $border-dark;
 }
 
-// 汇总统计
-.summary-stat {
+.player-zone-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: $text-secondary;
   text-align: center;
-  padding: 18px;
-  background: $bg-elevated;
-  border-radius: $radius-md;
-  border: 1px solid $border-dark;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
 
-  .summary-label {
-    font-size: 12px;
-    color: $text-muted;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
+.player-selects {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
 
-  .summary-value {
-    font-size: 28px;
-    font-weight: 800;
-    color: $text-primary;
-    font-variant-numeric: tabular-nums;
-
-    &--positive {
-      color: $color-positive;
-    }
-
-    &--negative {
-      color: $color-negative;
-    }
+  .frost-select {
+    max-width: 240px;
   }
 }
 
-// 近期交锋
+.player-data {
+  margin-top: 24px;
+}
+
+.player-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+
+  .player-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: $text-primary;
+  }
+
+  .player-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+.player-cols {
+  display: flex;
+  align-items: stretch;
+  gap: 10%;
+  padding: 0 10%;
+}
+
+// ============ 近期交锋 ============
 .battle-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .battle-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
+  gap: 16px;
+  padding: 10px 16px;
   background: $bg-elevated;
   border-radius: $radius-md;
   border: 1px solid $border-dark;
-  font-size: 13px;
 
   .battle-date {
-    color: $text-muted;
+    flex-shrink: 0;
     font-size: 12px;
+    color: $text-muted;
+    width: 90px;
   }
 
   .battle-teams {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: $text-secondary;
     font-weight: 500;
   }
 }
 
-// 球员预测
-.player-section-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: $text-secondary;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid $border-dark;
-}
-
-.player-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.player-card {
-  padding: 10px 14px;
-  background: $bg-elevated;
-  border-radius: $radius-md;
-  border: 1px solid $border-dark;
-  transition: all $transition-fast;
-
-  &:hover {
-    border-color: $border-light;
-    background: rgba($color-nba-blue, 0.04);
-  }
-}
-
-.player-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-
-  .player-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: $text-primary;
-  }
-}
-
-.player-prediction {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  .pred-label {
-    font-size: 11px;
-    color: $text-muted;
+// 响应式
+@media (max-width: $breakpoint-lg) {
+  .duel-hero {
+    flex-direction: column;
+    gap: 20px;
   }
 
-  .pred-range {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    font-variant-numeric: tabular-nums;
+  .hero-center {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
-  .pred-low {
-    font-size: 12px;
-    color: $text-muted;
+  .data-zone,
+  .player-cols {
+    flex-direction: column;
+    gap: 16px;
   }
-
-  .pred-mid {
-    font-size: 14px;
-    font-weight: 700;
-    color: $color-warning;
-  }
-
-  .pred-high {
-    font-size: 12px;
-    color: $text-muted;
-  }
-
-  .pred-sep {
-    font-size: 11px;
-    color: $text-muted;
-  }
-}
-
-.loading-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 0;
-}
-
-.empty-hint {
-  text-align: center;
-  padding: 24px 0;
-  font-size: 13px;
-  color: $text-muted;
 }
 </style>

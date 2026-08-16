@@ -15,6 +15,12 @@ from app.db.models import GameRecord, TeamData, Team
 
 SEASONS = ["2022-23", "2023-24", "2024-25", "2025-26"]
 
+# 10 赛季全量列表（2016-17 .. 2025-26）
+SEASONS_10 = [
+    "2016-17", "2017-18", "2018-19", "2019-20", "2020-21",
+    "2021-22", "2022-23", "2023-24", "2024-25", "2025-26",
+]
+
 
 def compute_season(season: str):
     """从比赛记录计算某赛季的球队统计"""
@@ -175,6 +181,105 @@ def compute_season(season: str):
 
         db.commit()
         logger.info(f"  写入 {count} 条 TeamData (pace 基准={league_avg_total:.1f})")
+
+
+def compute_season_derived(season: str):
+    """只更新 TeamData 的衍生列（主客场拆分/波动/近况），绝不覆盖 API 来源字段。
+
+    与 compute_season 的区别：compute_season 会插入带占位值的新行并跳过已有赛季；
+    本函数只 UPDATE 已有行的衍生列，供 bbref 采集后补全使用。
+    """
+    logger.info(f"计算 {season} 赛季衍生统计...")
+
+    with SessionLocal() as db:
+        games = db.query(GameRecord).filter(
+            GameRecord.season == season,
+            GameRecord.status == "FINISHED",
+        ).all()
+        if not games:
+            logger.warning(f"  无比赛数据")
+            return
+
+        td_map = {td.team_id: td for td in db.query(TeamData).filter(TeamData.season == season).all()}
+        if not td_map:
+            logger.warning(f"  该赛季无 TeamData 行，跳过（先跑 bbref 采集）")
+            return
+
+        stats = defaultdict(lambda: {
+            "home_wins": 0, "home_losses": 0, "away_wins": 0, "away_losses": 0,
+            "home_pf": [], "away_pf": [], "reg_pf": [],
+            "results_by_date": [],
+        })
+
+        for g in games:
+            hs, as_ = g.home_score, g.away_score
+            s = stats[g.home_team_id]
+            s["results_by_date"].append((g.game_date, hs, as_))
+            if not g.is_playoff:
+                s["home_pf"].append(hs)
+                s["reg_pf"].append(hs)
+            if hs > as_:
+                s["home_wins"] += 1
+            else:
+                s["home_losses"] += 1
+
+            s2 = stats[g.away_team_id]
+            s2["results_by_date"].append((g.game_date, as_, hs))
+            if not g.is_playoff:
+                s2["away_pf"].append(as_)
+                s2["reg_pf"].append(as_)
+            if as_ > hs:
+                s2["away_wins"] += 1
+            else:
+                s2["away_losses"] += 1
+
+        updated = 0
+        for team_id, s in stats.items():
+            td = td_map.get(team_id)
+            if td is None:
+                continue
+            td.home_wins = s["home_wins"]
+            td.home_losses = s["home_losses"]
+            td.away_wins = s["away_wins"]
+            td.away_losses = s["away_losses"]
+
+            reg_pf = s["reg_pf"]
+            ppg = round(sum(reg_pf) / len(reg_pf), 1) if reg_pf else None
+            if ppg:
+                pts_std = round(statistics.stdev(reg_pf), 1) if len(reg_pf) > 1 else round(ppg * 0.12, 1)
+                td.points_std = pts_std
+                td.points_cv = round(pts_std / ppg, 3)
+                td.home_ppg = round(sum(s["home_pf"]) / len(s["home_pf"]), 1) if s["home_pf"] else ppg
+                td.away_ppg = round(sum(s["away_pf"]) / len(s["away_pf"]), 1) if s["away_pf"] else ppg
+
+            s["results_by_date"].sort(key=lambda x: x[0])
+            recent = s["results_by_date"][-10:]
+            recent_wins = sum(1 for _, pf, pa in recent if pf > pa)
+            td.recent_win_rate = round(recent_wins / len(recent), 3)
+            td.momentum = round(sum(pf for _, pf, _ in recent) / len(recent), 1)
+            updated += 1
+
+        db.commit()
+        logger.info(f"  更新 {updated} 队衍生统计")
+
+
+def update_team_win_rates():
+    """用最新赛季 TeamData 的主客场拆分更新 team 表 home_win_rate/away_win_rate"""
+    with SessionLocal() as db:
+        latest_season = max(s for (s,) in db.query(TeamData.season).all())
+        tds = db.query(TeamData).filter(TeamData.season == latest_season).all()
+        updated = 0
+        for td in tds:
+            team = db.query(Team).filter(Team.team_id == td.team_id).first()
+            if team is None:
+                continue
+            home_total = td.home_wins + td.home_losses
+            away_total = td.away_wins + td.away_losses
+            team.home_win_rate = round(td.home_wins / home_total, 3) if home_total else None
+            team.away_win_rate = round(td.away_wins / away_total, 3) if away_total else None
+            updated += 1
+        db.commit()
+        logger.info(f"更新 team 主客场胜率 {updated} 队（最新赛季 {latest_season}）")
 
 
 def run():

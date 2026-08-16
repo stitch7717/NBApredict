@@ -27,6 +27,13 @@ def needs_update() -> bool:
         return days_since >= 1
 
 
+def get_current_season() -> str:
+    """按当前日期推导赛季标签: 10月及以后属于下一年份开始的赛季"""
+    now = datetime.now()
+    year = now.year if now.month >= 10 else now.year - 1
+    return f"{year}-{str(year + 1)[-2:]}"
+
+
 def run():
     logger.info("=" * 50)
     logger.info(f"每日数据更新 - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
@@ -55,9 +62,10 @@ def run():
     # Step 2: 更新球队衍生统计 (主客场拆分、近 10 场等)
     logger.info("Step 2: 更新球队统计...")
     try:
-        from scripts.compute_team_stats import compute_season
-        current_season = "2025-26"
-        compute_season(current_season)
+        from scripts.compute_team_stats import compute_season_derived, update_team_win_rates
+        current_season = get_current_season()
+        compute_season_derived(current_season)
+        update_team_win_rates()
     except Exception as e:
         logger.error(f"更新球队统计失败: {e}")
 

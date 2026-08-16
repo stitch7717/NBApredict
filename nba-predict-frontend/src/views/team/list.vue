@@ -16,7 +16,10 @@
       <el-table :data="teams" stripe v-loading="loading" style="width:100%">
         <el-table-column prop="teamName" label="球队" width="140">
           <template #default="{ row }">
-            <span class="team-name">{{ row.teamName }}</span>
+            <span class="team-cell team-name">
+              <TeamLogo :abbr="row.abbreviation || ''" :size="24" />
+              <span>{{ row.teamName }}</span>
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="abbreviation" label="缩写" width="80">
@@ -31,21 +34,29 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="defenseType" label="防守类型" width="120" />
-        <el-table-column prop="offenseType" label="进攻风格" width="120" />
-        <el-table-column prop="strengthLevel" label="实力" width="80" />
+        <el-table-column prop="defenseType" label="防守类型" width="120">
+          <template #default="{ row }">{{ row.defenseType || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="offenseType" label="进攻风格" width="120">
+          <template #default="{ row }">{{ row.offenseType || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="strengthLevel" label="实力" width="80">
+          <template #default="{ row }">{{ row.strengthLevel || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="homeWinRate" label="主场胜率" width="110">
           <template #default="{ row }">
-            <span :style="{ color: row.homeWinRate > 0.6 ? '#50C878' : '#B0B0B0' }">
+            <span v-if="row.homeWinRate != null" :style="{ color: row.homeWinRate > 0.6 ? '#50C878' : '#B0B0B0' }">
               {{ (row.homeWinRate * 100).toFixed(1) }}%
             </span>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column prop="awayWinRate" label="客场胜率" width="110">
           <template #default="{ row }">
-            <span :style="{ color: row.awayWinRate > 0.5 ? '#50C878' : '#B0B0B0' }">
+            <span v-if="row.awayWinRate != null" :style="{ color: row.awayWinRate > 0.5 ? '#50C878' : '#B0B0B0' }">
               {{ (row.awayWinRate * 100).toFixed(1) }}%
             </span>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
@@ -95,7 +106,7 @@ const goToPredict = (team) => {
 </script>
 
 <style lang="scss" scoped>
-.team-list-page { max-width: 1400px; }
+.team-list-page { max-width: 1400px; margin: 0 auto; }
 
 .team-name { font-weight: 600; color: $text-primary; }
 

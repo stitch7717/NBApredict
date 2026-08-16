@@ -8,7 +8,12 @@
         <el-option label="2024-25" value="2024-25" />
       </el-select>
       <el-select v-model="teamId" placeholder="球队筛选" clearable filterable style="width:160px">
-        <el-option v-for="t in teams" :key="t.teamId" :label="t.teamName" :value="t.teamId" />
+        <el-option v-for="t in teams" :key="t.teamId" :label="t.teamName" :value="t.teamId">
+          <span class="team-cell">
+            <TeamLogo :abbr="t.abbreviation || ''" :size="20" />
+            <span>{{ t.teamName }}</span>
+          </span>
+        </el-option>
       </el-select>
       <el-button type="primary" @click="loadStars">
         <el-icon><Search /></el-icon>查询
@@ -24,7 +29,11 @@
           </div>
           <div class="star-player-info">
             <div class="star-player-name">{{ player.playerName }}</div>
-            <div class="star-player-team">{{ player.teamName }} vs {{ player.opponentTeamName }}</div>
+            <div class="star-player-team">
+              <span class="team-cell"><TeamLogo :abbr="teamAbbrOf(player.teamName)" :size="16" /> <span>{{ player.teamName }}</span></span>
+              <span class="matchup-vs">vs</span>
+              <span class="team-cell"><TeamLogo :abbr="teamAbbrOf(player.opponentTeamName)" :size="16" /> <span>{{ player.opponentTeamName }}</span></span>
+            </div>
           </div>
         </div>
         <div class="star-card-stats">
@@ -80,9 +89,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { seriesApi, teamApi } from '@/api'
+import { teamAbbrOf } from '@/constants/teams'
+import { CURRENT_SEASON } from '@/constants'
 import { Star, Search } from '@element-plus/icons-vue'
 
-const season = ref('2025-26')
+const season = ref(CURRENT_SEASON)
 const teamId = ref(null)
 const stars = ref([])
 const teams = ref([])
@@ -107,7 +118,7 @@ const loadStars = async () => {
 </script>
 
 <style lang="scss" scoped>
-.series-page { max-width: 1400px; }
+.series-page { max-width: 1400px; margin: 0 auto; }
 
 .stars-grid {
   display: grid;
@@ -148,7 +159,14 @@ const loadStars = async () => {
 
 .star-player-info {
   .star-player-name { font-size: 17px; font-weight: 700; color: $text-primary; }
-  .star-player-team { font-size: 12px; color: $text-muted; margin-top: 2px; }
+  .star-player-team {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: $text-muted;
+    margin-top: 2px;
+  }
 }
 
 .star-card-stats {

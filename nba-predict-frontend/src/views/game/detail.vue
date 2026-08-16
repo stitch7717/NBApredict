@@ -1,5 +1,7 @@
 <template>
   <div class="game-detail-page animate-fade-in">
+    <h2 class="page-title">数据页</h2>
+
     <!-- 加载状态 -->
     <div v-if="loading" class="neu-card">
       <div class="loading-overlay" style="position:static;min-height:300px">
@@ -12,7 +14,12 @@
       <!-- 比赛头部 -->
       <div class="game-header neu-card">
         <div class="header-matchup">
-          <div class="header-team header-team--home" :class="{ winner: game.homeWin === 1 }">
+          <div
+            class="header-team header-team--home clickable-team"
+            :class="{ winner: game.homeWin === 1 }"
+            @click="goToTeamDetail(homeTeam)"
+          >
+            <div class="ht-logo"><TeamLogo :abbr="homeTeam?.abbreviation || ''" :size="72" /></div>
             <div class="ht-abbr">{{ homeTeam?.abbreviation || 'HOM' }}</div>
             <div class="ht-name">{{ homeTeam?.teamName || '主队' }}</div>
             <div v-if="isFinished" class="ht-score">{{ game.homeScore }}</div>
@@ -22,7 +29,12 @@
             <span v-if="game.gameDate" class="game-date">{{ formatDate(game.gameDate) }}</span>
             <span :class="['status-tag', statusTagClass]">{{ statusText }}</span>
           </div>
-          <div class="header-team header-team--away" :class="{ winner: game.homeWin === 0 }">
+          <div
+            class="header-team header-team--away clickable-team"
+            :class="{ winner: game.homeWin === 0 }"
+            @click="goToTeamDetail(awayTeam)"
+          >
+            <div class="ht-logo"><TeamLogo :abbr="awayTeam?.abbreviation || ''" :size="72" /></div>
             <div class="ht-abbr">{{ awayTeam?.abbreviation || 'AWY' }}</div>
             <div class="ht-name">{{ awayTeam?.teamName || '客队' }}</div>
             <div v-if="isFinished" class="ht-score">{{ game.awayScore }}</div>
@@ -70,13 +82,13 @@
               <!-- 预测比分 -->
               <div class="score-display">
                 <div class="team-score team-score--home">
-                  <div class="ts-name">{{ predictResult.homeTeamName || predictResult.home_team_name || '主队' }}</div>
+                  <div class="ts-name"><TeamLogo :abbr="homeTeam?.abbreviation || ''" :size="28" /> {{ predictResult.homeTeamName || predictResult.home_team_name || '主队' }}</div>
                   <div class="ts-score">{{ predictResult.predictHomeScore || predictResult.home_score || '-' }}</div>
                   <div class="ts-label">预测得分</div>
                 </div>
                 <div class="ts-vs">VS</div>
                 <div class="team-score team-score--away">
-                  <div class="ts-name">{{ predictResult.awayTeamName || predictResult.away_team_name || '客队' }}</div>
+                  <div class="ts-name"><TeamLogo :abbr="awayTeam?.abbreviation || ''" :size="28" /> {{ predictResult.awayTeamName || predictResult.away_team_name || '客队' }}</div>
                   <div class="ts-score">{{ predictResult.predictAwayScore || predictResult.away_score || '-' }}</div>
                   <div class="ts-label">预测得分</div>
                 </div>
@@ -155,12 +167,12 @@
                 </el-table-column>
                 <el-table-column label="主队得分" width="110">
                   <template #default="{ row }">
-                    <span class="score-cell">{{ row.homeScore ?? row.team1Score ?? '-' }}</span>
+                    <span class="team-cell"><TeamLogo :abbr="homeTeam?.abbreviation || ''" :size="18" /> <span class="score-cell">{{ row.homeScore ?? row.team1Score ?? '-' }}</span></span>
                   </template>
                 </el-table-column>
                 <el-table-column label="客队得分" width="110">
                   <template #default="{ row }">
-                    <span class="score-cell">{{ row.awayScore ?? row.team2Score ?? '-' }}</span>
+                    <span class="team-cell"><TeamLogo :abbr="awayTeam?.abbreviation || ''" :size="18" /> <span class="score-cell">{{ row.awayScore ?? row.team2Score ?? '-' }}</span></span>
                   </template>
                 </el-table-column>
                 <el-table-column label="胜者" width="120">
@@ -217,6 +229,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { TrendCharts, Connection, User, Warning, ArrowRight } from '@element-plus/icons-vue'
 import { gameApi, teamApi } from '@/api'
+import { CURRENT_SEASON } from '@/constants'
 
 const route = useRoute()
 const router = useRouter()
@@ -290,6 +303,12 @@ const loadTeams = async () => {
   }
 }
 
+const goToTeamDetail = (team) => {
+  if (team?.teamId != null) {
+    router.push(`/team/detail/${team.teamId}`)
+  }
+}
+
 const runPredict = async () => {
   if (!game.value) return
   predicting.value = true
@@ -301,6 +320,9 @@ const runPredict = async () => {
       useOdds: false,
     })
     predictResult.value = res.data || res
+    if ((res.data || res)?.degraded) {
+      ElMessage.warning('算法服务不可用，当前为降级数据')
+    }
   } catch (e) {
     console.error('预测失败', e)
     ElMessage.warning('预测服务暂不可用')
@@ -316,7 +338,7 @@ const loadBattleRecords = async () => {
     const res = await gameApi.getBattle({
       team1Id: game.value.homeTeamId,
       team2Id: game.value.awayTeamId,
-      season: game.value.season || '2025-26',
+      season: game.value.season || CURRENT_SEASON,
     })
     battleRecords.value = res.data?.battle_records || res.data?.records || []
   } catch (e) {
@@ -379,7 +401,8 @@ const formatDate = (dateStr) => {
 
 <style lang="scss" scoped>
 .game-detail-page {
-  max-width: 1000px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 // Header
@@ -398,6 +421,26 @@ const formatDate = (dateStr) => {
 .header-team {
   text-align: center;
   min-width: 140px;
+
+  .ht-logo {
+    margin-bottom: 10px;
+  }
+
+  &.clickable-team {
+    cursor: pointer;
+    border-radius: $radius-lg;
+    padding: 8px 12px;
+    transition: transform $transition-fast, box-shadow $transition-fast;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: $neu-raised-sm;
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
 
   .ht-abbr {
     font-size: 36px;
@@ -649,6 +692,13 @@ const formatDate = (dateStr) => {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+.ts-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 @media (max-width: $breakpoint-lg) {
