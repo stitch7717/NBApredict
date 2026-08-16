@@ -24,6 +24,10 @@ nba-predict-sql/         MySQL 初始化脚本
 3. `cd nba-predict-backend && mvn clean package -DskipTests && java -jar target/nba-predict-backend-1.0.0.jar`
 4. `cd nba-predict-frontend && npm run dev`
 
+**开发环境注意**：
+- Python uvicorn StatReload 在 Windows 下**不可靠**（改了代码不重载）——改 Python 后直接重启服务，并用 `curl localhost:8000/...` 验证新字段存在
+- 前端改完先 `npm run build` 验证编译，再刷新浏览器；行为异常且 build 通过 → 先重启 dev server（HMR 缓存）
+
 ## 核心技术约束
 
 ### 字段命名：三层不一致是最大坑
@@ -59,14 +63,30 @@ Vite DevServer (:3000)
 - POST 接口用 `@RequestBody` + DTO record，绝不用 `@RequestParam`
 - 不要在 Controller 类上加 `@Validated`（会导致 AOP 代理冲突 NPE）
 - 分页参数校验手动做，不用注解
+- **预测必须自动落库**：`TeamServiceImpl.predict()` / `PlayerServiceImpl.predict()` 成功后插入 `predict_record`（status=PREDICTED），改预测链路不要破坏此行为；校准走 `/record/calibrate`（回填真实值 → 算误差 → CALIBRATED）
 
 ### 前端
 
-- `const fn = () => {...}` 定义在 `ref()` / `reactive()` 之前（避免 TDZ）
+- `const fn = () => {...}` 定义在 `ref()` / `reactive()` 之前（避免 TDZ）。连锁症状：`Cannot read properties of null (reading 'parentNode')` 是 TDZ 崩溃的下游错误，根因看 Console 第一条 `Cannot access ... before initialization`
 - 新页面组件放 `src/views/<name>/index.vue`
 - 图标用全局注册的 Element Plus Icons 字符串名
 - API 调用加 `try/catch`，catch 里至少 `console.error`
 - 页面根容器：`max-width` 必须搭配 `margin: 0 auto`（居中）
+- **新建 store / 路由文件后必须重启 Vite dev server**（HMR 对新文件挂载不可靠，表现：build 通过但页面行为是旧的）
+
+### 双角色权限
+
+- Pinia `stores/user.js`（role: null | 'guest' | 'admin'，localStorage 持久化，无密码）
+- 路由守卫在 `router/index.js`：未选身份 → `/entry`；guest 访问 `ADMIN_ROUTES`（/settings /odds /record）→ 跳首页
+- 守卫直接读 `localStorage.getItem('nba-predict-role')`，**不要**在 router 里 `useUserStore()`（循环依赖）
+- MainLayout 菜单按角色过滤；新增管理页要同时加进 `adminMenuItems` 和 `ADMIN_ROUTES`
+- 已删除页面：系列赛（series）、数据看板（dashboard）——不要引用
+
+### 系数体系现状（v2 后）
+
+- 系统设置页**只有赔率融合权重（odds_weight）是活的**（预测时从 DB 读）
+- 其他系数（all_star/veteran/injury/clutch/home/fatigue）是 `settings.py` 静态值，由 `scripts/tune_coefficients.py` 回测调优——**不要再往设置页加系数滑块，它们不会生效**
+- 球员预测读 `COEFFICIENT_CONFIG` 静态值；球队预测是 Ridge 模型 + 胜率从分差推导（`1/(1+e^(-diff/7))`），不走系数链
 
 ### 球队队标
 
@@ -90,6 +110,12 @@ Vite DevServer (:3000)
 - 必须挂 Clash 代理（`PROXY = http://127.0.0.1:7897`），且需保证 Clash 在运行
 - 请求间隔 ≥7s；Cloudflare 质询页出现会指数退避重试，被限流时等 30 分钟再跑
 - 数据页列名坑：`Tm` 列已改名 `Team`；战绩表第一列是分区名表头、数据是全名带 `*`（用 `team_id_of()` 尾词匹配）
+
+**赔率数据现状**：
+- `odds_data` 18,852 条全部来自 `scripts/import_kaggle_odds.py`（Kaggle 2025-26 赛季，最晚 2026-06-13 总决赛；8 月休赛期无新数据）
+- `data_quality` 全是导入时静态盖章的 `NORMAL`——真实质量评级（赔率 vs 赛果校准对比）链路未建
+- 部分场次缺胜负赔率（只有盘口）→ 前端显示 `-`、隐含概率回退 50%（无信息先验）
+- 美国式赔率：负数=热门（-1100 下注 $1100 赢 $100），正数=冷门（+700 下注 $100 赢 $700）
 
 ## 预测算法
 
