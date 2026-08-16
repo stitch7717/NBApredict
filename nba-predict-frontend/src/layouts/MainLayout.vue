@@ -83,7 +83,7 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   HomeFilled, User, Trophy, TrendCharts, Setting, Bell, FullScreen,
-  DataAnalysis, Money, Document, Star
+  DataAnalysis, Money, Document
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
@@ -101,7 +101,6 @@ const baseMenuItems = [
 
 // 管理员专属菜单
 const adminMenuItems = [
-  { path: '/series', label: '系列赛', icon: Star },
   { path: '/dashboard', label: '数据看板', icon: DataAnalysis },
   { path: '/odds', label: '赔率管理', icon: Money },
   { path: '/record', label: '预测记录', icon: Document },

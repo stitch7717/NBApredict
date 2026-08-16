@@ -17,13 +17,6 @@ export const teamApi = {
   getBattleRecord: (params) => request.get('/game/battle', { params }),
 }
 
-// 系列赛接口
-export const seriesApi = {
-  getStarList: (params) => request.get('/series/star', { params }),
-  getStarDetail: (id) => request.get(`/series/star/${id}`),
-  getReview: (params) => request.get('/series/review', { params }),
-}
-
 // 预测记录接口
 export const recordApi = {
   getList: (params) => request.get('/record/list', { params }),

@@ -185,101 +185,6 @@
       </el-table>
     </div>
 
-    <!-- 展开详情 -->
-    <div v-if="expandedPlayer" class="neu-card detail-card animate-fade-in" style="margin-top: 16px">
-      <div class="neu-card-header">
-        <span class="title">
-          {{ expandedPlayer.playerName }} - 完整数据
-        </span>
-        <span class="neu-tag neu-tag--blue">{{ season }}</span>
-      </div>
-      <el-row :gutter="16">
-        <el-col :span="8">
-          <div class="detail-block">
-            <div class="detail-block-title">基本信息</div>
-            <div class="detail-item">
-              <span class="detail-label">位置</span>
-              <span class="detail-value">{{ expandedPlayer.position || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">球队</span>
-              <span class="detail-value team-cell">
-                <TeamLogo :abbr="expandedPlayer.teamAbbr || ''" :size="20" />
-                <span>{{ expandedPlayer.teamName || '-' }}</span>
-              </span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">场次</span>
-              <span class="detail-value mono-num">{{ expandedPlayer.gamesPlayed || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">首发</span>
-              <span class="detail-value mono-num">{{ expandedPlayer.gamesStarted || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">上场时间</span>
-              <span class="detail-value mono-num">{{ formatStat(expandedPlayer.minutesPerGame) }}</span>
-            </div>
-          </div>
-        </el-col>
-        <el-col :span="8">
-          <div class="detail-block">
-            <div class="detail-block-title">得分数据</div>
-            <div class="detail-item">
-              <span class="detail-label">场均得分</span>
-              <span class="detail-value mono-num">{{ formatStat(expandedPlayer.pointsPerGame) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">命中率</span>
-              <span class="detail-value mono-num">{{ formatPct(expandedPlayer.fieldGoalPct) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">三分%</span>
-              <span class="detail-value mono-num">{{ formatPct(expandedPlayer.threePtPct) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">罚球%</span>
-              <span class="detail-value mono-num">{{ formatPct(expandedPlayer.freeThrowPct) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">真实命中率</span>
-              <span class="detail-value mono-num">{{ formatPct(expandedPlayer.trueShootingPct) }}</span>
-            </div>
-          </div>
-        </el-col>
-        <el-col :span="8">
-          <div class="detail-block">
-            <div class="detail-block-title">效率 & 进阶</div>
-            <div class="detail-item">
-              <span class="detail-label">篮板</span>
-              <span class="detail-value mono-num">{{ formatStat(expandedPlayer.reboundsPerGame) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">助攻</span>
-              <span class="detail-value mono-num">{{ formatStat(expandedPlayer.assistsPerGame) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">抢断</span>
-              <span class="detail-value mono-num">{{ formatStat(expandedPlayer.stealsPerGame) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">盖帽</span>
-              <span class="detail-value mono-num">{{ formatStat(expandedPlayer.blocksPerGame) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">PER</span>
-              <span class="detail-value mono-num">{{ formatStat(expandedPlayer.per) }}</span>
-            </div>
-          </div>
-        </el-col>
-      </el-row>
-      <div style="margin-top: 16px; text-align: right">
-        <el-button type="primary" size="small" @click="goToPredict(expandedPlayer)">
-          <el-icon><TrendCharts /></el-icon> 预测此球员
-        </el-button>
-      </div>
-    </div>
-
     <!-- 分页 -->
     <div class="pagination-wrap">
       <el-pagination
@@ -298,7 +203,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, TrendCharts } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 import { teamApi } from '@/api'
 import { dataApi } from '@/api'
 import { SEASONS } from '@/constants'
@@ -318,9 +223,6 @@ const loading = ref(false)
 const page = ref(1)
 const limit = ref(20)
 const total = ref(0)
-
-const expandedPlayer = ref(null)
-const expandedPlayerId = ref(null)
 
 onMounted(async () => {
   await loadTeams()
@@ -397,8 +299,6 @@ const toCamel = (row) => {
 
 const loadPlayers = async () => {
   loading.value = true
-  expandedPlayer.value = null
-  expandedPlayerId.value = null
   try {
     const params = {
       season: season.value,
@@ -431,18 +331,8 @@ const onSortChange = ({ prop, order }) => {
   loadPlayers()
 }
 
-const toggleDetail = (row) => {
-  if (expandedPlayerId.value === row.playerId) {
-    expandedPlayer.value = null
-    expandedPlayerId.value = null
-    return
-  }
-  expandedPlayerId.value = row.playerId
-  expandedPlayer.value = row
-}
-
-const goToPredict = (player) => {
-  router.push({ path: '/player/predict', query: { playerId: player.playerId } })
+const goToPlayerDetail = (row) => {
+  router.push(`/player/detail/${row.playerId}`)
 }
 
 const formatStat = (val) => {
@@ -494,53 +384,5 @@ const positionTagClass = (pos) => {
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
-}
-
-// 详情卡片
-.detail-card {
-  .el-row {
-    margin: 0;
-  }
-}
-
-.detail-block {
-  padding: 12px;
-  background: $bg-elevated;
-  border-radius: $radius-md;
-  border: 1px solid $border-dark;
-  height: 100%;
-}
-
-.detail-block-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: $color-nba-blue;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid $border-dark;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-
-  &:not(:last-child) {
-    border-bottom: 1px solid rgba($border-dark, 0.5);
-  }
-}
-
-.detail-label {
-  font-size: 12px;
-  color: $text-muted;
-}
-
-.detail-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: $text-primary;
 }
 </style>

@@ -87,12 +87,6 @@ const routes = [
         meta: { title: '球队详情' },
       },
       {
-        path: 'series',
-        name: 'Series',
-        component: () => import('@/views/series/index.vue'),
-        meta: { title: '系列赛' },
-      },
-      {
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
@@ -120,7 +114,7 @@ const router = createRouter({
 })
 
 // 管理员专属路由
-const ADMIN_ROUTES = ['/settings', '/odds', '/record', '/dashboard', '/series']
+const ADMIN_ROUTES = ['/settings', '/odds', '/record', '/dashboard']
 
 router.beforeEach((to, from, next) => {
   document.title = `${to.meta.title || 'NBA预测系统'} - NBA预测系统`
