@@ -17,7 +17,7 @@ class PlayerService:
         self.config_dao = ConfigDAO()
 
     def _get_coeff_config(self) -> dict:
-        """获取系数配置(优先数据库，回退到配置文件)"""
+        """获取系数配置（静态值，由回测脚本 tune_coefficients.py 调优后更新）"""
         return COEFFICIENT_CONFIG
 
     def predict(self, request: PlayerPredictRequest) -> PlayerPredictResponse:

@@ -82,6 +82,27 @@
             主场 {{ sd.home_wins ?? 0 }}-{{ sd.home_losses ?? 0 }} · 客场 {{ sd.away_wins ?? 0 }}-{{ sd.away_losses ?? 0 }}
           </div>
         </div>
+        <!-- 能力图 + 命中率图 -->
+        <el-row :gutter="16" style="margin-bottom: 16px">
+          <el-col :span="12">
+            <div class="chart-block">
+              <div class="chart-block-title">六宫格能力图</div>
+              <AbilityRadar
+                :dimensions="abilityDimensions"
+                :values="abilityValues"
+                :color="radarColor"
+                :height="280"
+              />
+            </div>
+          </el-col>
+          <el-col :span="12">
+            <div class="chart-block">
+              <div class="chart-block-title">命中率</div>
+              <ShootingChart :items="shootingItems" :color="radarColor" :height="280" />
+            </div>
+          </el-col>
+        </el-row>
+
         <el-row :gutter="16">
           <el-col v-for="item in statItems" :key="item.label" :xs="12" :sm="8" :md="6">
             <div class="stat-cell">
@@ -168,6 +189,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { TrendCharts, Warning, ArrowDown } from '@element-plus/icons-vue'
 import { dataApi } from '@/api'
 import { CURRENT_SEASON } from '@/constants'
+import { teamPrimaryColor } from '@/constants/teams'
 
 const route = useRoute()
 const router = useRouter()
@@ -209,6 +231,41 @@ const toRosterCamel = (p) => {
     assistsPerGame: s.assists_per_game,
   }
 }
+
+// 六宫格能力图：维度与归一化参考上限（全部"越高越好"）
+const abilityDimensions = [
+  { name: '进攻效率', max: 130 },
+  { name: '节奏', max: 110 },
+  { name: '场均得分', max: 130 },
+  { name: '场均篮板', max: 55 },
+  { name: '场均助攻', max: 32 },
+  { name: '净效率', max: 15 },
+]
+
+const abilityValues = computed(() => {
+  const s = sd.value
+  return [
+    s.offensive_rating ?? 0,
+    s.pace ?? 0,
+    s.points_per_game ?? 0,
+    s.rebounds_per_game ?? 0,
+    s.assists_per_game ?? 0,
+    Math.max(s.net_rating ?? 0, 0),
+  ]
+})
+
+const radarColor = computed(() => teamPrimaryColor(team.value?.abbreviation || ''))
+
+const shootingItems = computed(() => {
+  const s = sd.value
+  return [
+    { label: '命中率', value: s.fg_percentage ?? 0 },
+    { label: '三分命中率', value: s.three_percentage ?? 0 },
+    { label: '罚球命中率', value: s.ft_percentage ?? 0 },
+    { label: '真实命中率', value: s.true_shooting_pct ?? 0 },
+    { label: '有效命中率', value: s.effective_fg_pct ?? 0 },
+  ]
+})
 
 const statItems = computed(() => {
   const s = sd.value
@@ -433,6 +490,22 @@ const formatSigned = (val) => {
     border-color: $border-subtle;
     background: rgba(255, 255, 255, 0.05);
   }
+}
+
+// 图表块
+.chart-block {
+  padding: 16px;
+  background: $bg-elevated;
+  border-radius: $radius-md;
+  border: 1px solid $border-dark;
+  margin-bottom: 16px;
+}
+
+.chart-block-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: $color-nba-blue;
+  margin-bottom: 8px;
 }
 
 // 战绩概览（赛季数据模块顶部；高度与数据格子一致）
