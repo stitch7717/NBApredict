@@ -3,8 +3,10 @@ package com.nba.predict.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nba.predict.common.ResultCode;
+import com.nba.predict.entity.PredictRecord;
 import com.nba.predict.entity.Team;
 import com.nba.predict.exception.BusinessException;
+import com.nba.predict.mapper.PredictRecordMapper;
 import com.nba.predict.mapper.TeamMapper;
 import com.nba.predict.service.TeamService;
 import com.nba.predict.util.HttpUtil;
@@ -25,6 +27,7 @@ public class TeamServiceImpl implements TeamService {
     private final TeamMapper teamMapper;
     private final HttpUtil httpUtil;
     private final ObjectMapper objectMapper;
+    private final PredictRecordMapper predictRecordMapper;
 
     @Override
     public Page<Team> listTeams(int page, int size, String conference, String defenseType, String offenseType) {
@@ -73,11 +76,44 @@ public class TeamServiceImpl implements TeamService {
             request.put("use_odds", useOdds);
 
             String response = httpUtil.post("/algorithm/team/predict", request);
-            return objectMapper.readValue(response, Map.class);
+            Map<String, Object> result = objectMapper.readValue(response, Map.class);
+            saveTeamRecord(homeTeamId, awayTeamId, scene, useOdds, result);
+            return result;
         } catch (Exception e) {
             log.error("算法调用失败: {}", e.getMessage());
             return buildDegradedResult(homeTeam, awayTeam, scene);
         }
+    }
+
+    /**
+     * 自动保存球队预测记录
+     */
+    private void saveTeamRecord(Long homeTeamId, Long awayTeamId, String scene,
+                                boolean useOdds, Map<String, Object> result) {
+        try {
+            PredictRecord record = new PredictRecord();
+            record.setPredictType("TEAM");
+            record.setHomeTeamId(homeTeamId);
+            record.setAwayTeamId(awayTeamId);
+            record.setScene(scene);
+            record.setUseOdds(useOdds ? 1 : 0);
+            record.setPredictHomeScore(asInt(result.get("predict_home_score")));
+            record.setPredictAwayScore(asInt(result.get("predict_away_score")));
+            record.setPredictTotalScore(asInt(result.get("predict_total_score")));
+            record.setPredictScoreDiff(asInt(result.get("predict_score_diff")));
+            record.setStatus("PREDICTED");
+            predictRecordMapper.insert(record);
+            log.info("球队预测记录已保存: {} vs {}", homeTeamId, awayTeamId);
+        } catch (Exception e) {
+            log.warn("预测记录保存失败（不影响预测结果）: {}", e.getMessage());
+        }
+    }
+
+    private Integer asInt(Object value) {
+        if (value instanceof Number n) {
+            return n.intValue();
+        }
+        return null;
     }
 
     private Map<String, Object> buildDegradedResult(Team homeTeam, Team awayTeam, String scene) {
