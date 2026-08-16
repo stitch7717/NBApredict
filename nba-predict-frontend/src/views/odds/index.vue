@@ -230,7 +230,8 @@ const qualityTagClass = (q) => {
   if (!q) return ''
   if (q === 'HIGH' || q === '高') return 'neu-tag--green'
   if (q === 'MEDIUM' || q === '中') return 'neu-tag--orange'
-  return 'neu-tag--red'
+  if (q === 'LOW' || q === '低') return 'neu-tag--red'
+  return 'neu-tag--gray' // NORMAL / 未知
 }
 
 const loadOddsData = async () => {

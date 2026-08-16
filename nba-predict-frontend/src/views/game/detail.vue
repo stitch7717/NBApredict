@@ -207,6 +207,49 @@
               </div>
             </div>
           </el-tab-pane>
+
+          <!-- Tab 4: 赔率数据 -->
+          <el-tab-pane label="赔率数据" name="odds">
+            <div v-loading="oddsLoading">
+              <el-table v-if="oddsList.length" :data="oddsList" stripe style="width:100%">
+                <el-table-column label="主胜赔率">
+                  <template #default="{ row }">
+                    <span class="mono-num">{{ row.homeWinOdds ?? '-' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="客胜赔率">
+                  <template #default="{ row }">
+                    <span class="mono-num">{{ row.awayWinOdds ?? '-' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="主胜概率">
+                  <template #default="{ row }">
+                    <span class="mono-num">{{ formatPctDisplay(row.homeWinProb) }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="让分盘口">
+                  <template #default="{ row }">
+                    <span class="mono-num">{{ row.handicapLine ?? '-' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="大小分盘口">
+                  <template #default="{ row }">
+                    <span class="mono-num">{{ row.totalLine ?? '-' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="质量">
+                  <template #default="{ row }">
+                    <span class="neu-tag" :class="oddsQualityTag(row.dataQuality)">{{ row.dataQuality || '-' }}</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div v-else-if="!oddsLoading" class="empty-state" style="padding:24px">
+                <el-icon class="empty-icon"><Money /></el-icon>
+                <div class="empty-title">暂无赔率数据</div>
+                <div class="empty-desc">该比赛尚未采集到赔率</div>
+              </div>
+            </div>
+          </el-tab-pane>
         </el-tabs>
       </div>
     </template>
@@ -228,8 +271,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { TrendCharts, Connection, User, Warning, ArrowRight } from '@element-plus/icons-vue'
-import { gameApi, teamApi } from '@/api'
+import { gameApi, teamApi, oddsApi } from '@/api'
 import { CURRENT_SEASON } from '@/constants'
+import { Money } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -247,6 +291,9 @@ const predictResult = ref(null)
 
 const battleLoading = ref(false)
 const battleRecords = ref([])
+
+const oddsLoading = ref(false)
+const oddsList = ref([])
 
 const STATUS = {
   FINISHED: 'FINISHED',
@@ -276,6 +323,7 @@ const loadGameDetail = async () => {
     if (game.value) {
       runPredict()
       loadBattleRecords()
+      loadOdds()
     }
   } catch (e) {
     console.error('加载比赛详情失败', e)
@@ -307,6 +355,38 @@ const goToTeamDetail = (team) => {
   if (team?.teamId != null) {
     router.push(`/team/detail/${team.teamId}`)
   }
+}
+
+const loadOdds = async () => {
+  if (!game.value) return
+  oddsLoading.value = true
+  try {
+    const res = await oddsApi.getList({
+      homeTeamId: game.value.homeTeamId,
+      awayTeamId: game.value.awayTeamId,
+      page: 1,
+      size: 20,
+    })
+    oddsList.value = res.data?.records || []
+  } catch (e) {
+    console.error('加载赔率失败', e)
+    oddsList.value = []
+  } finally {
+    oddsLoading.value = false
+  }
+}
+
+const oddsQualityTag = (q) => {
+  if (!q) return ''
+  if (q === 'HIGH' || q === '高') return 'neu-tag--green'
+  if (q === 'MEDIUM' || q === '中') return 'neu-tag--orange'
+  if (q === 'LOW' || q === '低') return 'neu-tag--red'
+  return 'neu-tag--gray'
+}
+
+const formatPctDisplay = (v) => {
+  if (v == null) return '-'
+  return (Number(v) * 100).toFixed(1) + '%'
 }
 
 const runPredict = async () => {
