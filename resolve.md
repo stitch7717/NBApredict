@@ -2670,7 +2670,101 @@ scss: {
 - 比赛预测页重做：对阵舞台（大队标 + 队色全局发散渲染 + 下划线透明选择器）、比分在 VS 两侧、双队色胜率条、三行两列数据网格、展开箭头、球员对位区（自动预测 + 展开更多）
 - 数据页（原"比赛详情页"）改名加宽（1000→1400px），球队图标可点击进球队详情
 
+## 十六、详情页与投篮热区图（2026年8月17日）
+
+### 16.1 球队详情页暗底配深字
+
+**现象**：球队详情页头部队名、赛季数据数值显示为暗色、几乎不可见；卡片标题（白字）正常，整页明暗不一致。
+
+**原因**：页面上存在两类表面——暗色卡片（neu-card #1A1A1A）和白色表格（Element Plus 默认）。之前为白底表格设的 `$text-dark`（#2D2D2D）被用在了暗色卡片上的队名/数据值（hero-name、stat-value 等），暗字配暗底。
+
+**修复**：暗色卡片上的文字统一用 `$text-primary`（白）/`$text-secondary`（浅灰）；白底表格内才用 `$text-dark`。**规则：文字颜色必须匹配所在表面的明暗，不能按"表格文字"一刀切。**
+
+### 16.2 半场投篮热区图（ShootingCourt）两个 bug
+
+1. **只显示放大的一部分**：SVG 内容高度 480，viewBox 高度却按传入的 height prop（300）动态计算 → 下半场被裁掉并放大。修复：viewBox 固定 `0 0 500 480`，svg 宽度 100% + height auto 按比例自适应，移除 height prop。
+2. **分区与三分弧线不吻合**：初版用矩形近似分区，与真实弧线（弧心=篮筐 (250,452)，半径 228）对不上。修复：分区全部改为沿弧线几何的 SVG path（`A 228 228 ...`），三分左翼/弧顶/右翼、长两分、中距离左右都与画线共用同一几何参数，颜色块与弧线完全贴合。
+
+### 16.3 新增功能与数据管线（配套）
+
+- **球员信息页** `/player/detail/:playerId`：与球队详情页同款头部（队标/基本信息/预测按钮/返回）+ 数据卡片（赛季切换、17 项数据网格）；入口：球员数据页点击行、球队详情页点击球员名单行（原内联展开详情已移除）。
+- **六宫格能力雷达** `AbilityRadar`：球队（进攻效率/节奏/得分/篮板/助攻/净效率）、球员（得分/篮板/助攻/抢断/盖帽/命中率），ECharts radar，归一化用固定 NBA 常识上限，值自动裁剪 [0, max]。
+- **球队逐区投篮数据管线（bbref）**：`team_shooting_zones` 表（team_id/season/zone/fg_made/fg_attempted/fg_percentage，UNIQUE(team_id,season,zone)）→ `fetch_team_shooting.py`（curl+代理+7s 间隔+质询退避，30 队×5 区=150 行数量断言）→ `/data/teams/{id}` 返回 `shooting_zones` → 前端热区图**真实数据优先、无数据回退近似**（两分区≈整体命中率、三分区≈三分命中率）。
+- **数据边界**：stats.nba.com 逐次出手坐标已封锁不可用；bbref 每队页有 5 个距离分区（At Rim/3-10/10-16/16-3P/3P）真实命中率——球队 30 页约 4 分钟；球员需每球员一页（约 900 页）暂未做。真实逐区数据抓取依赖 Clash 代理（直连 403）。
+
+### 16.4 服务热重载再次失效
+
+修改 `app/api/data.py`（新增 `shooting_zones` 字段）后，运行中的 Python 服务仍返回旧响应——与 15.3 同源问题（uvicorn StatReload 在 Windows 下修改文件后不重载）。**结论升级为规则：改 Python 代码后不要等热重载，直接重启服务并 curl 验证新字段存在。**
+
+---
+
+## 十七、双角色权限与赔率数据体系（2026年8月17日）
+
+### 17.1 双角色入口系统
+
+**需求**：普通用户和管理员两种身份进入系统；普通用户看不到系统设置等管理页；入口页偏科幻魔幻风格、鼠标交互。
+
+**实现**：
+
+- **角色存储**：Pinia `stores/user.js`，`role: null | 'guest' | 'admin'`，localStorage 持久化（key `nba-predict-role`），无密码（毕设演示场景，真实认证待部署时引入 Spring Security）
+- **入口页** `/entry`（无布局全屏）：星空粒子 canvas（180 颗闪烁粒子随鼠标惯性漂移）+ 双层视差光晕 + 左右两个"传送门"卡片（蓝=普通用户/红=管理员），hover 时 3D 倾斜 + 脉冲光环，移动端自动竖排
+- **路由守卫**：未选身份访问任何页 → 跳 `/entry`；已选身份访问 `/entry` → 跳 `/`；guest 访问 `/settings`、`/odds`、`/record` → 跳首页（`ADMIN_ROUTES` 白名单）
+- **菜单过滤**：`MainLayout` 的 menuItems 改 computed，按角色拼接 baseMenuItems（首页/预测/球员/球队）+ adminMenuItems（赔率/记录/设置）；顶栏用户区显示当前角色，点击退出回入口页
+- **注意**：守卫直接读 `localStorage.getItem`（不用 store，避免 router ↔ pinia 循环依赖）
+
+### 17.2 页面精简
+
+- **删除系列赛之星页**（`views/series/`、路由、菜单、`seriesApi` 模块）
+- **删除数据看板页**（`views/dashboard/`、路由、菜单）
+- 管理端剩余：赔率管理、预测记录、系统设置
+
+### 17.3 预测记录自动采集
+
+**问题**：`predict_record` 表、查询接口、校准接口都有，唯独"预测时写入记录"没人做——预测记录页永远为空。
+
+**实现**：`TeamServiceImpl.predict()` 和 `PlayerServiceImpl.predict()` 算法调用成功后自动插入记录：
+
+```java
+// 球队预测
+record.setPredictType("TEAM");
+record.setPredictHomeScore(asInt(result.get("predict_home_score")));
+...
+record.setStatus("PREDICTED");
+predictRecordMapper.insert(record);
+```
+
+- 保存失败只打 warn 日志，不影响预测结果返回
+- 校准链路复用已有 `/record/calibrate`：比赛结束后回填真实比分 → 自动算 error_points/error_total/error_diff → status=CALIBRATED
+- 校准 = 单场对答案；回测 = 历史批量模拟考（`tune_coefficients.py` / `validate_predictions.py`）
+
+### 17.4 系数体系精简（v2 重写后的遗留清理）
+
+**问题**：v2 球队预测改为 Ridge 模型 + 胜率从分差推导后，系统设置页 6 个系数（全明星/老将/伤病/关键球/主场/疲劳）全部失效——设置写入 DB 但预测从不读 DB：
+
+| 系数 | 实际读取位置 |
+|------|-------------|
+| all_star / veteran / injury | `settings.py` 静态值（`_get_coeff_config` docstring 谎称"优先数据库"） |
+| clutch | 已随"关键战"场景删除 |
+| home / fatigue | 硬编码 1.055 / 0.92 |
+| **odds_weight** | ✅ 唯一从 DB 读的（赔率融合） |
+
+**决策（方向 B）**：承认系数体系职责移交回测脚本。设置页只保留赔率融合权重（带保存按钮、DB 加载）+ 功能开关 + 数据源表格；`_get_coeff_config` docstring 改为诚实版本。
+
+### 17.5 赔率数据展示体系
+
+- **赔率管理页**：顶部新增按日期查询（默认今天）——对阵（队徽+队名）、主/客胜赔率、让分、大小分、质量、采集时间；无数据提示去手动采集
+- **比赛详情页**：新增"赔率数据"Tab（游客和管理员都可见）——按主客队自动加载，含隐含胜率、盘口、质量标签
+- **赔率数据现状**：`odds_data` 18,852 条全部来自 `import_kaggle_odds.py`，最晚 2026-06-13 总决赛（8 月休赛期无新数据）；`data_quality` 全部为导入时静态盖章的 `NORMAL`，真实质量评级（HIGH/MEDIUM/LOW）需拿赔率 vs 真实赛果做校准对比，链路未建（列为后续功能）
+- **质量标签映射**：HIGH→绿、MEDIUM→橙、LOW→红、NORMAL/其他→灰（`neu-tag--gray`）
+- **美国式赔率说明**：负数=热门（下注 $1100 赢 $100），正数=冷门（下注 $100 赢 $700）；隐含胜率 = 赔率换算去水；部分场次 Kaggle 缺胜负赔率 → 显示 `-`、概率回退 50%（无信息先验，非数据错误）
+
+### 17.6 TDZ 错误重犯与 HMR 缓存（新问题）
+
+1. **odds 页 TDZ**：`oddsDate = ref(formatDateStr(new Date()))` 又写在函数定义前（13.3.1 同款错误）→ setup 抛 ReferenceError → 连锁 `Cannot read properties of null (reading 'parentNode')` → 整页白屏。**规则升级：`parentNode of null` 不是根因，Console 第一条 `Cannot access ... before initialization` 才是；凡 ref 初始化调用函数，先查定义顺序。**
+2. **Vite HMR 缓存旧模块**：`stores/user.js`、入口页等新文件创建后 dev server 未正确挂载（表现为"不管选什么都显示 Admin"）→ 重启 dev server + Ctrl+Shift+R 解决。**规则：新 store/新路由文件加入后，先重启 Vite 再验证。**
+3. **StatReload 提示**：uvicorn `reload=True` 在 dev 环境正常行为（改 Python 文件自动重启）；生产用 `ENV=prod` 关闭。
+
 ---
 
 *文档完成时间：2026年5月4日*
-*最近更新：2026年8月15日 — 10 赛季数据重建与回测体系（14.4-14.7）、赔率融合上线、模型重训、事故记录、前端样式改版（第15节）*
+*最近更新：2026年8月17日 — 双角色权限系统、预测记录自动采集、系数体系精简、赔率数据展示、TDZ/HMR 新规则（第17节）；详情页与投篮热区图（第16节）*
