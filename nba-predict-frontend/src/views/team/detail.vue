@@ -1,7 +1,7 @@
 <template>
   <div class="team-detail-page animate-fade-in">
     <!-- 加载状态 -->
-    <div v-if="loading" class="neu-card">
+    <div v-if="loading" class="neu-card detail-narrow">
       <div class="loading-overlay" style="position: static; min-height: 300px">
         <div class="loading-spinner"></div>
         <div class="loading-text">球队数据加载中...</div>
@@ -11,47 +11,76 @@
     <template v-else-if="team">
       <!-- 球队头部 -->
       <div class="neu-card team-hero">
-        <div class="hero-logo">
-          <TeamLogo :abbr="team.abbreviation || ''" :size="80" />
-        </div>
-        <div class="hero-info">
-          <h2 class="hero-name">
-            {{ team.teamName }}
-            <span class="hero-name-en">{{ team.teamNameEn }}</span>
-          </h2>
-          <div class="hero-tags">
-            <span class="neu-tag" :class="team.conference === 'East' ? 'neu-tag--green' : 'neu-tag--orange'">
-              {{ team.conference === 'East' ? '东部' : '西部' }}
-            </span>
-            <span class="neu-tag neu-tag--gray">{{ team.division || '-' }}</span>
-            <span v-if="team.offenseType" class="neu-tag neu-tag--blue">{{ team.offenseType }}</span>
-            <span v-if="team.defenseType" class="neu-tag neu-tag--red">{{ team.defenseType }}</span>
+        <div class="hero-body">
+          <div class="hero-logo">
+            <TeamLogo :abbr="team.abbreviation || ''" :size="120" />
           </div>
-        </div>
-        <div class="hero-record">
-          <div class="record-main">
-            <span class="record-w">{{ sd.wins ?? '-' }}</span>
-            <span class="record-sep">-</span>
-            <span class="record-l">{{ sd.losses ?? '-' }}</span>
+          <div class="hero-info">
+            <h2 class="hero-name">
+              {{ team.teamName }}
+              <span class="hero-name-en">{{ team.teamNameEn }}</span>
+            </h2>
+            <div class="hero-tags">
+              <span class="neu-tag" :class="team.conference === 'East' ? 'neu-tag--green' : 'neu-tag--orange'">
+                {{ team.conference === 'East' ? '东部' : '西部' }}
+              </span>
+            </div>
           </div>
-          <div class="record-sub">胜率 {{ formatPct(sd.win_percentage) }}</div>
-          <div class="record-sub">
-            主场 {{ sd.home_wins ?? 0 }}-{{ sd.home_losses ?? 0 }} · 客场 {{ sd.away_wins ?? 0 }}-{{ sd.away_losses ?? 0 }}
+          <!-- 球队基本信息 -->
+          <div class="hero-basic">
+            <div class="basic-row">
+              <span class="basic-label">所属分区</span>
+              <span class="basic-value">{{ team.division || '-' }}</span>
+            </div>
+            <div class="basic-row">
+              <span class="basic-label">进攻风格</span>
+              <span class="basic-value">{{ team.offenseType || '-' }}</span>
+            </div>
+            <div class="basic-row">
+              <span class="basic-label">防守风格</span>
+              <span class="basic-value">{{ team.defenseType || '-' }}</span>
+            </div>
           </div>
-        </div>
-        <div class="hero-actions">
-          <el-button type="primary" @click="goPredict">
-            <el-icon><TrendCharts /></el-icon>预测
-          </el-button>
-          <el-button @click="router.back()">返回</el-button>
+          <div class="hero-actions">
+            <el-button type="primary" @click="goPredict">
+              <el-icon><TrendCharts /></el-icon>预测
+            </el-button>
+            <el-button @click="router.back()">返回</el-button>
+          </div>
         </div>
       </div>
 
       <!-- 赛季数据 -->
-      <div class="neu-card" style="margin-top: 16px">
+      <div class="detail-narrow">
+        <div class="neu-card" style="margin-top: 16px">
         <div class="neu-card-header">
-          <span class="title">赛季数据</span>
-          <span class="neu-tag neu-tag--blue">{{ sd.season || CURRENT_SEASON }}</span>
+          <div class="season-title-group">
+            <span class="title">{{ season }}赛季</span>
+            <el-dropdown trigger="click" @command="switchSeason">
+              <span class="season-switch">
+                <el-icon><ArrowDown /></el-icon>
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="s in seasonOptions" :key="s" :command="s">
+                    {{ s }}赛季
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+        </div>
+        <!-- 战绩概览 -->
+        <div class="season-record">
+          <div class="record-line">
+            <span class="record-w">{{ sd.wins ?? '-' }}</span>
+            <span class="record-sep">-</span>
+            <span class="record-l">{{ sd.losses ?? '-' }}</span>
+            <span class="record-pct">胜率 {{ formatPct(sd.win_percentage) }}</span>
+          </div>
+          <div class="record-detail">
+            主场 {{ sd.home_wins ?? 0 }}-{{ sd.home_losses ?? 0 }} · 客场 {{ sd.away_wins ?? 0 }}-{{ sd.away_losses ?? 0 }}
+          </div>
         </div>
         <el-row :gutter="16">
           <el-col v-for="item in statItems" :key="item.label" :xs="12" :sm="8" :md="6">
@@ -61,10 +90,12 @@
             </div>
           </el-col>
         </el-row>
+        </div>
       </div>
 
       <!-- 球员名单 -->
-      <div class="neu-card" style="margin-top: 16px; padding: 0; overflow: hidden">
+      <div class="detail-narrow">
+        <div class="neu-card" style="margin-top: 16px; padding: 0; overflow: hidden">
         <div class="neu-card-header" style="padding: 16px 24px">
           <span class="title">球员名单</span>
         </div>
@@ -73,7 +104,7 @@
           stripe
           v-loading="rosterLoading"
           style="width: 100%"
-          @row-click="goToPlayerPredict"
+          @row-click="goToPlayerDetail"
         >
           <el-table-column prop="playerName" label="球员" min-width="160">
             <template #default="{ row }">
@@ -116,11 +147,12 @@
             </template>
           </el-table-column>
         </el-table>
+        </div>
       </div>
     </template>
 
     <!-- 错误状态 -->
-    <div v-else class="neu-card">
+    <div v-else class="neu-card detail-narrow">
       <div class="empty-state">
         <el-icon class="empty-icon"><Warning /></el-icon>
         <div class="empty-title">球队不存在</div>
@@ -133,7 +165,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TrendCharts, Warning } from '@element-plus/icons-vue'
+import { TrendCharts, Warning, ArrowDown } from '@element-plus/icons-vue'
 import { dataApi } from '@/api'
 import { CURRENT_SEASON } from '@/constants'
 
@@ -144,6 +176,8 @@ const loading = ref(true)
 const team = ref(null)
 const roster = ref([])
 const rosterLoading = ref(false)
+const season = ref(CURRENT_SEASON)
+const seasonOptions = ref([CURRENT_SEASON])
 
 const teamId = computed(() => Number(route.params.teamId))
 
@@ -210,9 +244,17 @@ onMounted(() => {
 const loadTeamDetail = async () => {
   loading.value = true
   try {
-    const res = await dataApi.getTeamDetail(teamId.value, CURRENT_SEASON)
+    const res = await dataApi.getTeamDetail(teamId.value, season.value)
     const data = res.data || res
     team.value = { ...toTeamCamel(data), seasonData: data.season_data || {} }
+    // 从历史赛季列表提取可选赛季（响应中 seasons 数组）
+    const history = (data.seasons || []).map((s) => s.season).filter(Boolean)
+    if (history.length) {
+      seasonOptions.value = history
+      if (!history.includes(season.value)) season.value = history[0]
+    } else if (!seasonOptions.value.includes(season.value)) {
+      seasonOptions.value.push(season.value)
+    }
     loadRoster()
   } catch (e) {
     console.error('加载球队详情失败', e)
@@ -225,7 +267,7 @@ const loadTeamDetail = async () => {
 const loadRoster = async () => {
   rosterLoading.value = true
   try {
-    const res = await dataApi.getTeamRoster(teamId.value, CURRENT_SEASON)
+    const res = await dataApi.getTeamRoster(teamId.value, season.value)
     const data = res.data || res
     const list = Array.isArray(data) ? data : data.players || data.roster || []
     roster.value = list
@@ -239,12 +281,18 @@ const loadRoster = async () => {
   }
 }
 
+const switchSeason = (s) => {
+  if (s === season.value) return
+  season.value = s
+  loadTeamDetail()
+}
+
 const goPredict = () => {
   router.push({ path: '/predict', query: { homeTeamId: team.value.teamId } })
 }
 
-const goToPlayerPredict = (player) => {
-  router.push({ path: '/player/predict', query: { playerId: player.playerId } })
+const goToPlayerDetail = (player) => {
+  router.push(`/player/detail/${player.playerId}`)
 }
 
 const formatStat = (val) => {
@@ -267,21 +315,39 @@ const formatSigned = (val) => {
 </script>
 
 <style lang="scss" scoped>
+// 页面全宽：头部卡片贴住内容区左右边缘
 .team-detail-page {
-  max-width: 1000px;
+  // 不加 max-width
+}
+
+// 除头部外的模块保持窄宽居中
+.detail-narrow {
+  max-width: 1200px;
   margin: 0 auto;
 }
 
-// 头部
+// 头部：整卡贴边，向上撑满，左右顶到内容区边缘
 .team-hero {
   display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 28px 32px;
   flex-wrap: wrap;
+  padding: 0;
+  overflow: hidden;
+  margin: -32px -32px 0;
+
+  .hero-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    padding: 30px 100px 18px;
+  }
 
   .hero-logo {
     flex-shrink: 0;
+    // 只放大图标视觉，不撑高卡片：布局占位保持 120px
+    transform: scale(1.3);
+    transform-origin: center;
   }
 
   .hero-info {
@@ -289,18 +355,18 @@ const formatSigned = (val) => {
     min-width: 220px;
 
     .hero-name {
-      font-size: 24px;
+      font-size: 30px;
       font-weight: 800;
-      color: $text-dark;
-      margin: 0 0 8px;
+      color: $text-primary;
+      margin: 0 0 10px;
       letter-spacing: -0.3px;
     }
 
     .hero-name-en {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 500;
-      color: $text-muted;
-      margin-left: 8px;
+      color: $text-secondary;
+      margin-left: 10px;
     }
 
     .hero-tags {
@@ -310,25 +376,28 @@ const formatSigned = (val) => {
     }
   }
 
-  .hero-record {
-    text-align: center;
+  .hero-basic {
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 140px;
 
-    .record-main {
-      font-size: 40px;
-      font-weight: 800;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
+    .basic-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
     }
 
-    .record-w { color: $color-nba-blue; }
-    .record-sep { color: $text-muted; margin: 0 4px; }
-    .record-l { color: $color-nba-red; }
-
-    .record-sub {
-      font-size: 12px;
+    .basic-label {
       color: $text-muted;
-      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .basic-value {
+      color: $text-primary;
+      font-weight: 600;
     }
   }
 
@@ -336,6 +405,83 @@ const formatSigned = (val) => {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
+  }
+}
+
+// 赛季切换：标题旁的小箭头按钮，融入背景
+.season-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.season-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: $radius-full;
+  border: 1px solid transparent;
+  color: $text-muted;
+  cursor: pointer;
+  transition: all $transition-fast;
+  outline: none;
+
+  &:hover {
+    color: $text-primary;
+    border-color: $border-subtle;
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+// 战绩概览（赛季数据模块顶部；高度与数据格子一致）
+.season-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  min-height: 88px;
+  padding: 14px 18px;
+  background: $bg-elevated;
+  border-radius: $radius-md;
+  border: 1px solid $border-dark;
+
+  .record-line {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+
+    .record-w,
+    .record-l {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .record-w { color: $color-nba-blue; }
+    .record-l { color: $color-nba-red; }
+
+    .record-sep {
+      font-size: 26px;
+      font-weight: 700;
+      color: $text-muted;
+    }
+
+    .record-pct {
+      margin-left: 22px;
+      font-size: 17px;
+      font-weight: 700;
+      color: $color-positive;
+    }
+  }
+
+  .record-detail {
+    font-size: 15px;
+    color: $text-secondary;
   }
 }
 
@@ -351,7 +497,7 @@ const formatSigned = (val) => {
   .stat-label {
     display: block;
     font-size: 12px;
-    color: $text-muted;
+    color: $text-secondary;
     margin-bottom: 8px;
   }
 
@@ -359,7 +505,7 @@ const formatSigned = (val) => {
     display: block;
     font-size: 22px;
     font-weight: 700;
-    color: $text-dark;
+    color: $text-primary;
   }
 }
 

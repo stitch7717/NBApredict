@@ -67,7 +67,7 @@
         v-loading="loading"
         stripe
         style="width: 100%"
-        @row-click="toggleDetail"
+        @row-click="goToPlayerDetail"
         @sort-change="onSortChange"
         :default-sort="{ prop: 'pointsPerGame', order: 'descending' }"
       >

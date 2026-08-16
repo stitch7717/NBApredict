@@ -44,17 +44,6 @@
         </div>
 
         <div class="topbar-right">
-          <div class="topbar-search">
-            <el-icon class="search-icon"><Search /></el-icon>
-            <input
-              type="text"
-              placeholder="搜索球员、球队..."
-              class="search-input"
-              v-model="searchQuery"
-              @keyup.enter="handleSearch"
-            />
-          </div>
-
           <div class="topbar-actions">
             <button class="action-btn" title="通知">
               <el-icon><Bell /></el-icon>
@@ -69,9 +58,9 @@
             <div class="user-avatar">
               <el-icon><UserFilled /></el-icon>
             </div>
-            <div class="user-info">
-              <span class="user-name">Admin</span>
-              <span class="user-role">分析师</span>
+            <div class="user-info" @click="switchRole" title="点击切换身份">
+              <span class="user-name">{{ userStore.isAdmin() ? 'Admin' : '访客' }}</span>
+              <span class="user-role">{{ userStore.isAdmin() ? '分析师' : '普通用户' }}</span>
             </div>
           </div>
         </div>
@@ -93,35 +82,49 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  HomeFilled, User, Trophy, TrendCharts, Setting, Search, Bell, FullScreen
+  HomeFilled, User, Trophy, TrendCharts, Setting, Bell, FullScreen,
+  DataAnalysis, Money, Document, Star
 } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
-const searchQuery = ref('')
+const userStore = useUserStore()
 
-const menuItems = [
+// 基础菜单（所有角色可见）
+const baseMenuItems = [
   { path: '/', label: '首页赛程', icon: HomeFilled },
   { path: '/predict', label: '比赛预测', icon: TrendCharts },
   { path: '/players', label: '球员数据', icon: User },
   { path: '/teams', label: '球队数据', icon: Trophy },
+]
+
+// 管理员专属菜单
+const adminMenuItems = [
+  { path: '/series', label: '系列赛', icon: Star },
+  { path: '/dashboard', label: '数据看板', icon: DataAnalysis },
+  { path: '/odds', label: '赔率管理', icon: Money },
+  { path: '/record', label: '预测记录', icon: Document },
   { path: '/settings', label: '系统设置', icon: Setting },
 ]
 
+const menuItems = computed(() =>
+  userStore.isAdmin() ? [...baseMenuItems, ...adminMenuItems] : baseMenuItems
+)
+
+const switchRole = () => {
+  userStore.exit()
+  router.push('/entry')
+}
+
 const currentTitle = computed(() => {
-  const item = menuItems.find(m => isActive(m.path))
+  const item = menuItems.value.find(m => isActive(m.path))
   return item?.label || 'NBA预测系统'
 })
 
 const isActive = (path) => {
   if (path === '/') return route.path === '/'
   return route.path.startsWith(path)
-}
-
-const handleSearch = () => {
-  if (searchQuery.value.trim()) {
-    router.push({ path: '/player/list', query: { keyword: searchQuery.value } })
-  }
 }
 
 const toggleFullscreen = () => {
@@ -302,46 +305,6 @@ const toggleFullscreen = () => {
   gap: $space-lg;
 }
 
-.topbar-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: $bg-elevated;
-  border: 1px solid $border-dark;
-  border-radius: $radius-full;
-  padding: 8px 16px;
-  width: 260px;
-  transition: all $transition-fast;
-  box-shadow: $neu-pressed;
-
-  .search-icon {
-    color: $text-muted;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  .search-input {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    color: $text-primary;
-    font-size: 13px;
-
-    &::placeholder {
-      color: $text-muted;
-    }
-  }
-
-  &:focus-within {
-    border-color: $color-nba-blue;
-    box-shadow:
-      inset 2px 2px 5px $neu-inset-dark,
-      inset -2px -2px 5px $neu-inset-light,
-      0 0 0 2px rgba($color-nba-blue, 0.15);
-  }
-}
-
 .topbar-actions {
   display: flex;
   align-items: center;
@@ -463,12 +426,6 @@ const toggleFullscreen = () => {
 // ============================================
 // 响应式
 // ============================================
-@media (max-width: $breakpoint-xl) {
-  .topbar-search {
-    width: 200px;
-  }
-}
-
 @media (max-width: $breakpoint-lg) {
   .sidebar {
     width: $sidebar-collapsed;
