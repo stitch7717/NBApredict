@@ -91,6 +91,19 @@ public class PredictRecord {
 
     private Integer errorDiff;
 
+    /** 列表展示用：球队名称，非数据库字段 */
+    @TableField(exist = false)
+    private String homeTeamName;
+
+    @TableField(exist = false)
+    private String awayTeamName;
+
+    /** 预测分析报告文本（球员状态波动检测的可读结论） */
+    private String analysisText;
+
+    /** 分析依据的结构化数据（JSON 字符串，便于后续改措辞时无需重新生成） */
+    private String analysisSignals;
+
     private String status;
 
     @TableField(fill = FieldFill.INSERT)

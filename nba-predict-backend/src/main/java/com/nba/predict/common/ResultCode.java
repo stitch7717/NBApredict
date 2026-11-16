@@ -31,6 +31,10 @@ public enum ResultCode {
     PREDICT_FAILED(1005, "预测计算失败"),
     DATA_NOT_FOUND(1006, "数据不存在"),
     STAR_NOT_FOUND(1007, "系列赛之星不存在"),
+    USER_NOT_FOUND(1008, "用户不存在"),
+    USERNAME_EXISTS(1009, "用户名已存在"),
+    LOGIN_FAILED(1010, "用户名或密码错误"),
+    ROLE_MISMATCH(1011, "账号类型与所选入口不符"),
 
     // 算法层错误 2xxx
     ALGORITHM_ERROR(2001, "算法调用失败"),

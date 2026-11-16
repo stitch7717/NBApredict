@@ -35,6 +35,12 @@ public class TaskController {
         return Result.success(PageResult.of(result.getTotal(), page, size, result.getRecords()));
     }
 
+    @Operation(summary = "数据新鲜度与任务状态汇总")
+    @GetMapping("/status")
+    public Result<java.util.Map<String, Object>> status() {
+        return Result.success(taskLogService.statusSummary());
+    }
+
     @Operation(summary = "手动触发数据更新")
     @PostMapping("/update-data")
     public Result<String> triggerDataUpdate() {

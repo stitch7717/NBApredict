@@ -101,11 +101,32 @@ public class TeamServiceImpl implements TeamService {
             record.setPredictAwayScore(asInt(result.get("predict_away_score")));
             record.setPredictTotalScore(asInt(result.get("predict_total_score")));
             record.setPredictScoreDiff(asInt(result.get("predict_score_diff")));
+            attachAnalysisReport(record, result.get("analysis_report"));
             record.setStatus("PREDICTED");
             predictRecordMapper.insert(record);
             log.info("球队预测记录已保存: {} vs {}", homeTeamId, awayTeamId);
         } catch (Exception e) {
             log.warn("预测记录保存失败（不影响预测结果）: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 将算法层返回的分析报告拆成两列存储：
+     * analysis_text 用于直接展示，analysis_signals 保留原始结构，
+     * 后续调整措辞时可直接基于结构重新渲染，无需重跑预测。
+     */
+    private void attachAnalysisReport(PredictRecord record, Object report) {
+        if (!(report instanceof Map<?, ?> map)) {
+            return;
+        }
+        Object text = map.get("text");
+        if (text != null) {
+            record.setAnalysisText(String.valueOf(text));
+        }
+        try {
+            record.setAnalysisSignals(objectMapper.writeValueAsString(map));
+        } catch (Exception e) {
+            log.warn("分析报告序列化失败（不影响预测）: {}", e.getMessage());
         }
     }
 
