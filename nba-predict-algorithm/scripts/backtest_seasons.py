@@ -37,13 +37,19 @@ TEST_SEASONS = [
 ]
 
 # 模式 B 特征名（全部可从比分推导，时点安全）
+#
+# 注：v2 曾把进攻效率与防守效率拆为两个特征，但在本口径下
+#     off_rtg + def_rtg ≡ 210（常数），二者完美共线、仅有一个自由度；
+#     pace_diff 又恒等于 home_pace - away_pace，三者仅两个自由度。
+#     故合并为「净效率」并删除 pace_diff，19 维 → 16 维，预测结果等价。
 FEATURE_NAMES_B = [
     "home_ppg", "away_ppg", "home_oppg", "away_oppg",
     "home_win_pct", "away_win_pct",
     "home_recent_wr", "away_recent_wr",
-    "home_off_rtg", "away_off_rtg", "home_def_rtg", "away_def_rtg",
-    "home_pace", "away_pace", "pace_diff",
-    "home_away_diff", "is_playoff",
+    "home_net_rtg", "away_net_rtg",
+    "home_pace", "away_pace",
+    "home_away_diff",
+    "is_playoff",
     "home_momentum", "away_momentum",
 ]
 
@@ -134,8 +140,8 @@ def mode_b_features(games: list):
                 h_ppg, a_ppg, h_oppg, a_oppg,
                 h_win_pct, a_win_pct,
                 h_recent_wr, a_recent_wr,
-                h_ortg, a_ortg, h_drtg, a_drtg,
-                h_pace, a_pace, h_pace - a_pace,
+                h_ortg - h_drtg, a_ortg - a_drtg,
+                h_pace, a_pace,
                 h_home_ppg - a_away_ppg,
                 g["is_playoff"],
                 h_mom, a_mom,

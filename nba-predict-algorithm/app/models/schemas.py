@@ -66,6 +66,10 @@ class TeamPredictResponse(BaseModel):
     predict_away_score: int
     predict_total_score: int
     predict_score_diff: int
+    # 预测区间：±1 个残差标准差，约覆盖 68% 的比赛
+    predict_total_score_low: Optional[int] = None
+    predict_total_score_high: Optional[int] = None
+    residual_std_total: Optional[float] = None
     # 融合预测(可选)
     predict_home_score_odds: Optional[int] = None
     predict_away_score_odds: Optional[int] = None
@@ -75,6 +79,10 @@ class TeamPredictResponse(BaseModel):
     coefficients: dict
     # 克制关系
     style_matchup: str
+    # 预测分析报告：球员状态波动检测结果 + 可读文本，生成失败时为 None
+    analysis_report: Optional[dict] = None
+    # 特征组对预测分差的贡献，用于前端条形图
+    feature_contributions: Optional[list] = None
 
 
 class OddsCalculateResponse(BaseModel):

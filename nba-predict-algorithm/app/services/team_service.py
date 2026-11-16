@@ -12,7 +12,22 @@ from app.db.player_dao import PlayerDAO
 from app.db.config_dao import ConfigDAO
 from app.db.models import Player
 from app.db.database import SessionLocal
+from app.services.report_service import generate_report
 from config.settings import CLUSTERING_CONFIG, ARROW_PLAYER_CONFIG, DATA_DIR
+
+# Mode B 特征口径的联赛场均总分基准（必须与 backtest_seasons.mode_b_features 一致，
+# 否则生产特征与训练特征不同分布）
+LEAGUE_TOTAL_POINTS = 210.0
+
+# 特征按设计层级分组，用于预测依据可视化（规避共线特征的单项贡献失真）
+FEATURE_GROUPS = {
+    "基础得分": ["home_ppg", "away_ppg", "home_oppg", "away_oppg"],
+    "赛季战绩": ["home_win_pct", "away_win_pct"],
+    "近期状态": ["home_recent_wr", "away_recent_wr", "home_momentum", "away_momentum"],
+    "净效率与节奏": ["home_net_rtg", "away_net_rtg", "home_pace", "away_pace"],
+    "主客场差分": ["home_away_diff"],
+    "场景标志": ["is_playoff"],
+}
 
 # Ridge 模型缓存
 _ridge_model = None
@@ -82,6 +97,39 @@ class TeamService:
         # 胜率直接从预测分差推导（与比分预测一致）
         home_win_prob = self._calc_win_probability(predict_diff)
 
+        # 预测区间：以走查式回测的残差标准差为尺度，±1σ 约覆盖 68% 的比赛
+        std_total = (_load_ridge_model() or {}).get("residual_std_total")
+        total_low = total_high = None
+        if std_total:
+            total_low = int(round(predict_total - std_total))
+            total_high = int(round(predict_total + std_total))
+
+        # 特征组贡献：把预测分差拆解到六个特征层，供前端条形图展示
+        feature_contributions = None
+        try:
+            ridge_meta = _load_ridge_model()
+            if ridge_meta:
+                feature_contributions = self._feature_contributions(
+                    home_data, away_data, request.scene, ridge_meta)
+        except Exception as e:
+            logger.warning(f"特征贡献计算失败（不影响预测结果）: {e}")
+
+        # 预测分析报告：逐场球员数据的状态波动检测。失败不影响主预测
+        analysis_report = None
+        try:
+            analysis_report = generate_report(
+                request.home_team_id,
+                request.away_team_id,
+                before_date=None,
+                prediction={
+                    "home_score": predict_home,
+                    "away_score": predict_away,
+                    "win_prob": round(home_win_prob, 3),
+                },
+            )
+        except Exception as e:
+            logger.warning(f"分析报告生成失败（不影响预测结果）: {e}")
+
         # 赔率融合字段（与主预测一致，未融合时为 None）
         if fused:
             resp_home_odds, resp_away_odds, resp_total_odds, resp_diff_odds = fused
@@ -99,12 +147,17 @@ class TeamService:
             predict_away_score=predict_away,
             predict_total_score=predict_total,
             predict_score_diff=predict_diff,
+            predict_total_score_low=total_low,
+            predict_total_score_high=total_high,
+            residual_std_total=std_total,
             predict_home_score_odds=resp_home_odds,
             predict_away_score_odds=resp_away_odds,
             predict_total_score_odds=resp_total_odds,
             predict_score_diff_odds=resp_diff_odds,
             coefficients=coefficients,
             style_matchup=style_matchup,
+            analysis_report=analysis_report,
+            feature_contributions=feature_contributions,
         )
 
     def _core_predict(self, home_data, away_data, request) -> tuple:
@@ -114,7 +167,7 @@ class TeamService:
             predict_home, predict_away = self._predict_ridge(
                 home_data, away_data, request.scene, ridge
             )
-            coefficients = {"model": "ridge_v1"}
+            coefficients = {"model": ridge.get("version", "ridge")}
             style_matchup = self._calc_style_matchup_simple(home_data, away_data)
         else:
             home_strength_c = self._calc_strength_coeff(home_data)
@@ -226,59 +279,86 @@ class TeamService:
         fused_away = round((fused_total - fused_diff) / 2)
         return fused_home, fused_away, fused_total, fused_diff
 
-    def _predict_ridge(self, home_data, away_data, scene: str, ridge: dict) -> tuple:
-        """用 Ridge 回归模型预测 (v2: 使用真实高阶数据)"""
+    def _build_feature_values(self, home_data, away_data, scene: str) -> dict:
+        """按 Mode B 口径构造 16 个特征值（与训练端 mode_b_features 严格一致）"""
         is_playoff = 1 if scene == "季后赛" else 0
 
-        # 真实数据（来自 nba_api）
         h_ppg = home_data.points_per_game or 110.0
         h_oppg = home_data.opponent_points or 110.0
         a_ppg = away_data.points_per_game or 108.0
         a_oppg = away_data.opponent_points or 110.0
 
-        h_off_rtg = home_data.offensive_rating or 110.0
-        h_def_rtg = home_data.defensive_rating or 110.0
-        a_off_rtg = away_data.offensive_rating or 110.0
-        a_def_rtg = away_data.defensive_rating or 110.0
-        h_net_rating = home_data.net_rating or (h_off_rtg - h_def_rtg)
-        a_net_rating = away_data.net_rating or (a_off_rtg - a_def_rtg)
+        # Mode B 口径：节奏与效率由得分推导
+        h_pace = (h_ppg + h_oppg) / LEAGUE_TOTAL_POINTS * 100
+        a_pace = (a_ppg + a_oppg) / LEAGUE_TOTAL_POINTS * 100
+        h_ortg = h_ppg / max(h_pace, 1) * 100
+        h_drtg = h_oppg / max(h_pace, 1) * 100
+        a_ortg = a_ppg / max(a_pace, 1) * 100
+        a_drtg = a_oppg / max(a_pace, 1) * 100
 
-        h_pace = home_data.pace or 100.0
-        a_pace = away_data.pace or 100.0
-
+        h_win_pct = home_data.win_percentage or 0.5
+        a_win_pct = away_data.win_percentage or 0.5
         h_home_ppg = home_data.home_ppg or h_ppg
-        h_away_ppg = home_data.away_ppg or h_ppg
-        h_home_away_diff = h_home_ppg - h_away_ppg
+        a_away_ppg = away_data.away_ppg or a_ppg
 
-        h_efg = home_data.effective_fg_pct or 0.5
-        a_efg = away_data.effective_fg_pct or 0.5
-        h_ts = home_data.true_shooting_pct or 0.55
-        a_ts = away_data.true_shooting_pct or 0.55
-        h_ast = home_data.assist_pct or 15.0
-        a_ast = away_data.assist_pct or 15.0
+        return {
+            "home_ppg": h_ppg,
+            "away_ppg": a_ppg,
+            "home_oppg": h_oppg,
+            "away_oppg": a_oppg,
+            "home_win_pct": h_win_pct,
+            "away_win_pct": a_win_pct,
+            "home_recent_wr": home_data.recent_win_rate or h_win_pct,
+            "away_recent_wr": away_data.recent_win_rate or a_win_pct,
+            "home_net_rtg": h_ortg - h_drtg,
+            "away_net_rtg": a_ortg - a_drtg,
+            "home_pace": h_pace,
+            "away_pace": a_pace,
+            "home_away_diff": h_home_ppg - a_away_ppg,
+            "is_playoff": is_playoff,
+            "home_momentum": home_data.momentum or h_ppg,
+            "away_momentum": away_data.momentum or a_ppg,
+        }
 
-        features = [
-            h_ppg, a_ppg, h_oppg, a_oppg,
-            home_data.win_percentage or 0.5,
-            away_data.win_percentage or 0.5,
-            home_data.recent_win_rate or home_data.win_percentage or 0.5,
-            away_data.recent_win_rate or away_data.win_percentage or 0.5,
-            round(h_off_rtg, 1), round(a_off_rtg, 1),
-            round(h_def_rtg, 1), round(a_def_rtg, 1),
-            round(h_net_rating, 1), round(a_net_rating, 1),
-            round(h_off_rtg - a_def_rtg, 1),
-            round(a_off_rtg - h_def_rtg, 1),
-            round(h_efg, 3), round(a_efg, 3),
-            round(h_pace, 1), round(a_pace, 1),
-            round(h_pace - a_pace, 1),
-            round(h_ts, 3), round(a_ts, 3),
-            round(h_efg - a_efg, 3),
-            round(h_ast, 1), round(a_ast, 1),
-            is_playoff,
-            round(h_home_away_diff, 1),
-            home_data.momentum or h_ppg,
-            away_data.momentum or a_ppg,
+    def _feature_contributions(self, home_data, away_data, scene: str, ridge: dict) -> list:
+        """把预测分差拆解到各特征组，供前端可视化。
+
+        单特征贡献在存在代数共线时并不稳定（pace / net_rtg 完全由 ppg、oppg 决定），
+        因此按设计层级聚合后再呈现，避免出现"某特征贡献为负却不合直觉"的读数。
+        """
+        values = self._build_feature_values(home_data, away_data, scene)
+        per_feature = {}
+        for name in ridge["features"]:
+            z = ((float(values[name]) - ridge["scaler_mean"][name])
+                 / max(ridge["scaler_scale"][name], 0.001))
+            # 对分差的影响 = 主队系数 − 客队系数
+            w = ridge["home_coefficients"][name] - ridge["away_coefficients"][name]
+            per_feature[name] = w * z
+
+        groups = [
+            {"group": label,
+             "contribution": round(sum(per_feature.get(k, 0.0) for k in keys), 2)}
+            for label, keys in FEATURE_GROUPS.items()
         ]
+        # 截距差即模型学到的"主场基线优势"，补上后各条之和等于预测分差
+        groups.append({
+            "group": "模型基线（主场优势）",
+            "contribution": round(ridge["home_intercept"] - ridge["away_intercept"], 2),
+        })
+        groups.sort(key=lambda g: abs(g["contribution"]), reverse=True)
+        return groups
+
+    def _predict_ridge(self, home_data, away_data, scene: str, ridge: dict) -> tuple:
+        """用 Ridge 回归模型预测（v3：Mode B 19 维特征，无数据泄漏）
+
+        特征口径必须与训练端（scripts/train_model_ridge_v3.py / mode_b_features）
+        严格一致：节奏与效率类特征由得分推导，而不是直接取 team_data 中
+        bbref 的真实效率值 —— 后者量纲不同，会造成训练/服务特征错配。
+        """
+        values = self._build_feature_values(home_data, away_data, scene)
+
+        # 按模型保存的特征顺序取值，避免位置错配
+        features = [float(values[k]) for k in ridge["features"]]
 
         # 标准化: (x - mean) / scale
         means = [ridge["scaler_mean"][k] for k in ridge["features"]]
