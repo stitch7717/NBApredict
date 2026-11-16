@@ -1,5 +1,17 @@
 import request, { pythonRequest } from './request'
 
+// 定时任务接口
+export const taskApi = {
+  getStatus: () => request.get('/task/status'),
+  getLogs: (params) => request.get('/task/log', { params }),
+}
+
+// 认证接口
+export const authApi = {
+  login: (data) => request.post('/auth/login', data),
+  register: (data) => request.post('/auth/register', data),
+}
+
 // 球员接口
 export const playerApi = {
   getList: (params) => request.get('/player/list', { params }),

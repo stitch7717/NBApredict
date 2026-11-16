@@ -11,6 +11,7 @@ import router from './router'
 import TeamLogo from './components/TeamLogo.vue'
 import AbilityRadar from './components/AbilityRadar.vue'
 import ShootingCourt from './components/ShootingCourt.vue'
+import FeatureContribution from './components/FeatureContribution.vue'
 import './styles/global.scss'
 
 const app = createApp(App)
@@ -18,6 +19,7 @@ const app = createApp(App)
 app.component('TeamLogo', TeamLogo)
 app.component('AbilityRadar', AbilityRadar)
 app.component('ShootingCourt', ShootingCourt)
+app.component('FeatureContribution', FeatureContribution)
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)

@@ -111,7 +111,7 @@ const menuItems = computed(() =>
 )
 
 const switchRole = () => {
-  userStore.exit()
+  userStore.logout()
   router.push('/entry')
 }
 

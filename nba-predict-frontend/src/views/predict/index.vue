@@ -53,6 +53,12 @@
           <span class="vs-ring">VS</span>
           <span v-if="result" class="score-num score-num--away animate-fade-in">{{ result.predictAwayScore ?? result.predict_away_score ?? 0 }}</span>
         </div>
+        <!-- 总分与预测区间（±1σ，约覆盖 68% 的比赛） -->
+        <div v-if="result && totalRange" class="total-range">
+          预测总分 <b>{{ result.predictTotalScore ?? result.predict_total_score ?? '-' }}</b>
+          <span class="range-hint">区间 {{ totalRange }}（±1σ，约 68% 覆盖）</span>
+        </div>
+
         <el-radio-group v-model="form.scene" size="small" class="scene-group">
           <el-radio-button label="常规赛">常规赛</el-radio-button>
           <el-radio-button label="季后赛">季后赛</el-radio-button>
@@ -114,6 +120,29 @@
       <div class="winprob-bar-custom">
         <div class="winprob-fill" :style="{ width: homePct, background: homeColor }"></div>
         <div class="winprob-fill" :style="{ width: awayPct, background: awayColor }"></div>
+      </div>
+    </div>
+
+    <!-- 预测分析报告：球员状态波动检测结果 -->
+    <div v-if="analysisText" class="analysis-zone animate-fade-in">
+      <div class="analysis-head">
+        <span class="analysis-title">预测分析</span>
+        <span class="analysis-method">{{ analysisMethod }}</span>
+      </div>
+      <p class="analysis-text">{{ analysisText }}</p>
+      <!-- 各特征组对预测分差的贡献 -->
+      <div v-if="featureContribution?.length" class="contribution-block">
+        <div class="contribution-title">各特征组对预测分差的贡献</div>
+        <FeatureContribution :items="featureContribution" :height="235" />
+      </div>
+
+      <div v-if="analysisSignals.length" class="analysis-chips">
+        <span
+          v-for="s in analysisSignals"
+          :key="s.key"
+          class="analysis-chip"
+          :class="`analysis-chip--${s.type}`"
+        >{{ s.label }}</span>
       </div>
     </div>
 
@@ -470,6 +499,44 @@ const playerMoreRows = computed(() => {
 
 const homePct = computed(() => ((result.value?.homeWinProb ?? result.value?.home_win_prob ?? 0) * 100).toFixed(1) + '%')
 const awayPct = computed(() => ((1 - (result.value?.homeWinProb ?? result.value?.home_win_prob ?? 0)) * 100).toFixed(1) + '%')
+
+// 预测区间：后端按回测残差标准差给出 ±1σ 上下界
+const totalRange = computed(() => {
+  const low = result.value?.predictTotalScoreLow ?? result.value?.predict_total_score_low
+  const high = result.value?.predictTotalScoreHigh ?? result.value?.predict_total_score_high
+  return low != null && high != null ? `${low}–${high}` : ''
+})
+
+// ---------------- 预测分析报告 ----------------
+const analysisData = computed(
+  () => result.value?.analysisReport ?? result.value?.analysis_report ?? null,
+)
+const analysisText = computed(() => analysisData.value?.text || '')
+const analysisMethod = computed(() => analysisData.value?.method || '')
+
+// 特征组贡献：后端把预测分差按六个特征层 + 模型基线拆解
+const featureContribution = computed(
+  () => result.value?.featureContributions ?? result.value?.feature_contributions ?? null,
+)
+
+/** 把两队的信号拍平成标签，便于一眼看出谁热谁冷 */
+const analysisSignals = computed(() => {
+  const data = analysisData.value
+  if (!data) return []
+  const iconOf = { hot: '↑', cold: '↓', absent: '⚠' }
+  const list = []
+  for (const side of ['home', 'away']) {
+    const team = data[side]?.team_name || ''
+    for (const signal of data[side]?.signals || []) {
+      list.push({
+        key: `${side}-${signal.type}-${signal.name}`,
+        type: signal.type,
+        label: `${team} ${signal.name} ${iconOf[signal.type] || ''}`,
+      })
+    }
+  }
+  return list
+})
 const homeColor = computed(() => teamPrimaryColor(homeTeamAbbr.value))
 const awayColor = computed(() => teamPrimaryColor(awayTeamAbbr.value))
 
@@ -1081,6 +1148,109 @@ const loadBattleRecords = async () => {
   .player-cols {
     flex-direction: column;
     gap: 16px;
+  }
+}
+// 总分与预测区间
+.total-range {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-top: -12px;
+  font-size: 12px;
+  color: $text-secondary;
+
+  b {
+    color: $text-primary;
+    font-size: 15px;
+  }
+
+  .range-hint {
+    font-size: 11px;
+    color: $text-muted;
+  }
+}
+
+// ============ 预测分析报告 ============
+.analysis-zone {
+  position: relative;
+  z-index: 1;
+  margin-top: 28px;
+  padding: 18px 20px;
+  background: $bg-elevated;
+  border: 1px solid $border-dark;
+  border-radius: $radius-md;
+}
+
+.analysis-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.analysis-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: $color-nba-blue;
+  letter-spacing: 1px;
+}
+
+.analysis-method {
+  font-size: 11px;
+  color: $text-muted;
+  text-align: right;
+}
+
+.contribution-block {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed $border-dark;
+}
+
+.contribution-title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: $text-muted;
+}
+
+.analysis-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: $text-secondary;
+}
+
+.analysis-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.analysis-chip {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: $radius-full;
+  border: 1px solid transparent;
+
+  &--hot {
+    color: #E6A762;
+    border-color: rgba(230, 167, 98, 0.35);
+    background: rgba(230, 167, 98, 0.10);
+  }
+
+  &--cold {
+    color: #7A9CC6;
+    border-color: rgba(122, 156, 198, 0.35);
+    background: rgba(122, 156, 198, 0.10);
+  }
+
+  &--absent {
+    color: #C05C5C;
+    border-color: rgba(192, 92, 92, 0.35);
+    background: rgba(192, 92, 92, 0.10);
   }
 }
 </style>

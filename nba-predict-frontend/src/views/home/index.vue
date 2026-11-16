@@ -2,6 +2,19 @@
   <div class="home-page">
     <h2 class="page-title">NBA 赛程</h2>
 
+    <!-- 数据新鲜度：定时任务自动更新，展示最近一次同步结果 -->
+    <div v-if="dataStatus" class="data-status">
+      <span class="status-dot" :class="`status-dot--${statusTone}`"></span>
+      <span class="status-text">
+        数据更新至 <b>{{ dataStatus.latestGameDate || '—' }}</b>
+        <template v-if="latestTask">
+          <span class="status-sep">·</span>
+          最近同步 {{ formatSyncTime(latestTask.executeTime) }}
+          （{{ latestTask.executeStatus === 'SUCCESS' ? '成功' : '失败' }}）
+        </template>
+      </span>
+    </div>
+
     <!-- 日期选择 + 标签切换 -->
     <div class="schedule-controls">
       <el-date-picker
@@ -104,7 +117,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Calendar } from '@element-plus/icons-vue'
-import { gameApi, teamApi } from '@/api'
+import { gameApi, teamApi, taskApi } from '@/api'
 
 const router = useRouter()
 
@@ -127,9 +140,36 @@ const addDays = (dateStr, days) => {
   return formatDateStr(date)
 }
 
+// ---------------- 数据新鲜度 ----------------
+const dataStatus = ref(null)
+
+const latestTask = computed(() => {
+  const tasks = dataStatus.value?.tasks || []
+  if (!tasks.length) return null
+  return tasks.reduce((a, b) =>
+    new Date(a.executeTime) > new Date(b.executeTime) ? a : b)
+})
+
+const statusTone = computed(() => {
+  if (!latestTask.value) return 'idle'
+  return latestTask.value.executeStatus === 'SUCCESS' ? 'ok' : 'warn'
+})
+
+const formatSyncTime = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : '—')
+
+const loadDataStatus = async () => {
+  try {
+    const res = await taskApi.getStatus()
+    dataStatus.value = res.data || null
+  } catch (e) {
+    console.error('加载数据状态失败', e)
+  }
+}
+
 onMounted(() => {
   loadTeamMap()
   loadGames()
+  loadDataStatus()
 })
 
 const loadTeamMap = async () => {
@@ -462,5 +502,37 @@ const goToGame = (gameId) => {
   .game-status { width: auto; }
   .game-matchup { width: 100%; }
   .team { min-width: 80px; }
+}
+
+// ============ 数据新鲜度 ============
+.data-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -6px 0 16px;
+  font-size: 12px;
+  color: $text-muted;
+
+  b {
+    color: $text-secondary;
+    font-weight: 600;
+  }
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: $text-muted;
+
+  &--ok { background: #4CAF7D; }
+  &--warn { background: #D08C3A; }
+  &--idle { background: $text-muted; }
+}
+
+.status-sep {
+  margin: 0 6px;
+  opacity: 0.5;
 }
 </style>

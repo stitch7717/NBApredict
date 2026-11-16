@@ -24,7 +24,7 @@
           :style="tiltStyle.guest"
           @mouseenter="hoverPortal('guest')"
           @mouseleave="unhoverPortal"
-          @click="enter('guest')"
+          @click="pickRole('guest')"
         >
           <div class="portal-ring"></div>
           <div class="portal-icon">
@@ -47,7 +47,7 @@
           :style="tiltStyle.admin"
           @mouseenter="hoverPortal('admin')"
           @mouseleave="unhoverPortal"
-          @click="enter('admin')"
+          @click="pickRole('admin')"
         >
           <div class="portal-ring"></div>
           <div class="portal-icon">
@@ -59,13 +59,74 @@
         </div>
       </div>
     </div>
+
+    <!-- 登录 / 注册面板 -->
+    <transition name="auth-fade">
+      <div v-if="pendingRole" class="auth-overlay" @click.self="closeAuth">
+        <div class="auth-card">
+          <div class="auth-title">
+            {{ pendingRole === 'admin' ? '管理员登录' : (authMode === 'register' ? '注册账号' : '用户登录') }}
+          </div>
+          <div class="auth-sub">
+            {{ pendingRole === 'admin' ? '管理员账号不开放注册' : '登录后可参与预测、发布帖子并查看个人战绩' }}
+          </div>
+
+          <el-form class="auth-form" @submit.prevent>
+            <el-input
+              v-model="authForm.username"
+              placeholder="用户名"
+              size="large"
+              clearable
+            />
+            <el-input
+              v-model="authForm.password"
+              type="password"
+              placeholder="密码"
+              size="large"
+              show-password
+              @keyup.enter="submitAuth"
+            />
+            <el-input
+              v-if="pendingRole === 'guest' && authMode === 'register'"
+              v-model="authForm.nickname"
+              placeholder="昵称（选填）"
+              size="large"
+              clearable
+            />
+          </el-form>
+
+          <el-button
+            class="auth-submit"
+            type="primary"
+            size="large"
+            :loading="authLoading"
+            @click="submitAuth"
+          >
+            {{ authMode === 'register' ? '注册并进入' : '登 录' }}
+          </el-button>
+
+          <div class="auth-links">
+            <span
+              v-if="pendingRole === 'guest'"
+              class="auth-link"
+              @click="toggleAuthMode"
+            >
+              {{ authMode === 'register' ? '已有账号？去登录' : '没有账号？去注册' }}
+            </span>
+            <span class="auth-link auth-link--back" @click="closeAuth">← 返回选择身份</span>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { authApi } from '@/api'
 import { User, Setting } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -114,9 +175,62 @@ const unhoverPortal = () => {
   tiltStyle.admin = {}
 }
 
-const enter = (role) => {
-  userStore.enterAs(role)
-  router.push('/')
+// ---------------- 登录 / 注册 ----------------
+const pendingRole = ref(null) // null | 'guest' | 'admin'
+const authMode = ref('login') // login | register
+const authLoading = ref(false)
+const authForm = reactive({ username: '', password: '', nickname: '' })
+
+const pickRole = (role) => {
+  pendingRole.value = role
+  authMode.value = 'login'
+  authForm.username = ''
+  authForm.password = ''
+  authForm.nickname = ''
+}
+
+const closeAuth = () => {
+  pendingRole.value = null
+}
+
+const toggleAuthMode = () => {
+  authMode.value = authMode.value === 'login' ? 'register' : 'login'
+}
+
+const submitAuth = async () => {
+  const username = authForm.username.trim()
+  const password = authForm.password
+
+  if (username.length < 3) {
+    ElMessage.warning('用户名至少 3 个字符')
+    return
+  }
+  if (password.length < 6) {
+    ElMessage.warning('密码至少 6 个字符')
+    return
+  }
+
+  authLoading.value = true
+  try {
+    const payload = {
+      username,
+      password,
+      nickname: authForm.nickname.trim(),
+      role: pendingRole.value === 'admin' ? 'ADMIN' : 'USER',
+    }
+    const res = authMode.value === 'register'
+      ? await authApi.register(payload)
+      : await authApi.login(payload)
+
+    userStore.applyAuth(res.data, pendingRole.value === 'admin' ? 'admin' : 'guest')
+    ElMessage.success(authMode.value === 'register' ? '注册成功' : '登录成功')
+    router.push('/')
+  } catch (e) {
+    // 具体错误提示已由 axios 拦截器统一弹出
+    console.error('认证失败', e)
+  } finally {
+    authLoading.value = false
+  }
 }
 
 // 星空粒子
@@ -437,5 +551,84 @@ onBeforeUnmount(() => {
   .portal-row { flex-direction: column; }
   .portal-divider { flex-direction: row; }
   .divider-line { width: 40px; height: 1px; background: linear-gradient(90deg, transparent, rgba(150, 170, 220, 0.4), transparent); }
+}
+// ============ 登录 / 注册面板 ============
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.auth-card {
+  width: 360px;
+  padding: 32px 28px 22px;
+  border-radius: $radius-lg;
+  background: rgba(22, 22, 26, 0.94);
+  border: 1px solid $border-dark;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.auth-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: $text-primary;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.auth-sub {
+  margin: 8px 0 22px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: $text-muted;
+  text-align: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 18px;
+  letter-spacing: 2px;
+}
+
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+.auth-link {
+  color: $color-nba-blue;
+  cursor: pointer;
+  transition: opacity $transition-fast;
+
+  &:hover {
+    opacity: 0.75;
+  }
+
+  &--back {
+    color: $text-muted;
+  }
+}
+
+.auth-fade-enter-active,
+.auth-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.auth-fade-enter-from,
+.auth-fade-leave-to {
+  opacity: 0;
 }
 </style>

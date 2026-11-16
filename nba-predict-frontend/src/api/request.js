@@ -36,6 +36,10 @@ service.interceptors.request.use(
   (config) => {
     showLoading()
     config.headers['X-Request-Source'] = 'nba-predict-frontend'
+    const token = localStorage.getItem('nba-predict-token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
     config._retryCount = config._retryCount ?? 2
     return config
   },

@@ -68,6 +68,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="预测时间" width="180" />
+        <el-table-column label="分析" width="90">
+          <template #default="{ row }">
+            <el-button v-if="row.analysisText" type="primary" link size="small" @click="showAnalysis(row)">
+              查看
+            </el-button>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
             <el-button v-if="row.status === 'FINISHED'" type="primary" link size="small" @click="handleCalibrate(row)">
@@ -89,6 +97,14 @@
         @size-change="loadRecords"
       />
     </div>
+
+    <!-- 预测分析报告 -->
+    <el-dialog v-model="analysisVisible" title="预测分析报告" width="620px">
+      <p class="analysis-dialog-text">{{ analysisContent }}</p>
+      <template #footer>
+        <el-button @click="analysisVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -107,6 +123,14 @@ const loading = ref(false)
 const page = ref(1)
 const size = ref(20)
 const total = ref(0)
+
+// 分析报告弹窗
+const analysisVisible = ref(false)
+const analysisContent = ref('')
+const showAnalysis = (row) => {
+  analysisContent.value = row.analysisText || ''
+  analysisVisible.value = true
+}
 
 onMounted(() => { loadRecords() })
 
@@ -148,5 +172,13 @@ const handleCalibrate = async (row) => {
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
+}
+
+.analysis-dialog-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 2;
+  color: $text-secondary;
+  white-space: pre-wrap;
 }
 </style>
