@@ -58,3 +58,11 @@ nba-predict-algorithm/data/espn_events_cache.json
 nba-predict-algorithm/data/injuries.rda
 nba-predict-algorithm/data/kaggle_odds/
 nba-predict-algorithm/data/kaggle_teammisc/
+
+# 本地数据库备份（单个 6.6MB，不入库；备份请放网盘/Release）
+nba-predict-sql/backup_*.sql
+nba-predict-sql/*.dump
+
+# 模型中间产物
+nba-predict-algorithm/data/*.backup.json
+nba-predict-algorithm/data/*.pkl
